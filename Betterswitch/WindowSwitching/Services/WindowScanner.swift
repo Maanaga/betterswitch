@@ -13,16 +13,13 @@ enum WindowScanner {
                 appName(lhs).localizedCaseInsensitiveCompare(appName(rhs)) == .orderedAscending
             }
             .flatMap { app -> [WindowInfo] in
-                var items = [makeAppInfo(from: app)]
                 let windows = accessibilityWindows(for: app)
 
                 if windows.isEmpty {
-                    items.append(contentsOf: visibleWindowsByPID[app.processIdentifier] ?? [])
-                } else {
-                    items.append(contentsOf: windows)
+                    return visibleWindowsByPID[app.processIdentifier] ?? []
                 }
 
-                return items
+                return windows
             }
     }
 
@@ -74,7 +71,6 @@ enum WindowScanner {
 
         return WindowInfo(
             id: "cg-window-\(windowNumber)",
-            kind: .window,
             appName: app.map(appName) ?? ownerName,
             windowTitle: title,
             bundleIdentifier: app?.bundleIdentifier,
@@ -98,25 +94,11 @@ enum WindowScanner {
 
         return WindowInfo(
             id: "ax-window-\(app.processIdentifier)-\(index)-\(title ?? "")",
-            kind: .window,
             appName: appName(app),
             windowTitle: title,
             bundleIdentifier: app.bundleIdentifier,
             processIdentifier: app.processIdentifier,
             bounds: bounds,
-            ownerIcon: appIcon(for: app)
-        )
-    }
-
-    private static func makeAppInfo(from app: NSRunningApplication) -> WindowInfo {
-        WindowInfo(
-            id: "app-\(app.processIdentifier)",
-            kind: .app,
-            appName: appName(app),
-            windowTitle: nil,
-            bundleIdentifier: app.bundleIdentifier,
-            processIdentifier: app.processIdentifier,
-            bounds: nil,
             ownerIcon: appIcon(for: app)
         )
     }
