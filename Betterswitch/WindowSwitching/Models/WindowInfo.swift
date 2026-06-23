@@ -20,6 +20,14 @@ struct WindowInfo: Identifiable, Hashable {
         bundleIdentifier ?? ""
     }
 
+    var orderingKey: String {
+        [
+            bundleIdentifier ?? appName,
+            windowTitle ?? "",
+            bounds.map { "\(Int($0.minX)):\(Int($0.minY)):\(Int($0.width)):\(Int($0.height))" } ?? ""
+        ].joined(separator: "|")
+    }
+
     var hasWindow: Bool {
         true
     }

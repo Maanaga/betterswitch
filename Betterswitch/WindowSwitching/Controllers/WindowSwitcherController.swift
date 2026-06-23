@@ -10,6 +10,8 @@ final class WindowSwitcherController: ObservableObject {
     @Published var selectedWindowID: String?
     @Published var accessibilityEnabled = AXIsProcessTrusted()
 
+    private let recentSelectionKeysDefaultsKey = "recentSelectionKeys"
+    private let maxRecentSelectionCount = 40
     private var panel: NSPanel?
     private var keyboardMonitor: Any?
     private var isAnimatingHide = false
@@ -47,12 +49,13 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     func refreshWindows() {
-        windows = WindowScanner.runningItems()
+        windows = orderedWindows(WindowScanner.runningItems())
         selectedWindowID = windows.first?.id
     }
 
     func select(_ window: WindowInfo) {
         selectedWindowID = window.id
+        rememberSelection(window)
         activate(window)
         hide()
     }
@@ -199,6 +202,41 @@ final class WindowSwitcherController: ObservableObject {
             NSEvent.removeMonitor(keyboardMonitor)
             self.keyboardMonitor = nil
         }
+    }
+
+    private func orderedWindows(_ windows: [WindowInfo]) -> [WindowInfo] {
+        let recentKeys = UserDefaults.standard.stringArray(forKey: recentSelectionKeysDefaultsKey) ?? []
+        let recentRanks = Dictionary(uniqueKeysWithValues: recentKeys.enumerated().map { ($0.element, $0.offset) })
+        let frontmostProcessIdentifier = NSWorkspace.shared.frontmostApplication?.processIdentifier
+
+        return windows.enumerated().sorted { lhs, rhs in
+            let lhsRecentRank = recentRanks[lhs.element.orderingKey] ?? Int.max
+            let rhsRecentRank = recentRanks[rhs.element.orderingKey] ?? Int.max
+
+            if lhsRecentRank != rhsRecentRank {
+                return lhsRecentRank < rhsRecentRank
+            }
+
+            let lhsIsFrontmost = lhs.element.processIdentifier == frontmostProcessIdentifier
+            let rhsIsFrontmost = rhs.element.processIdentifier == frontmostProcessIdentifier
+            if lhsIsFrontmost != rhsIsFrontmost {
+                return lhsIsFrontmost
+            }
+
+            return lhs.offset < rhs.offset
+        }.map(\.element)
+    }
+
+    private func rememberSelection(_ window: WindowInfo) {
+        var recentKeys = UserDefaults.standard.stringArray(forKey: recentSelectionKeysDefaultsKey) ?? []
+        recentKeys.removeAll { $0 == window.orderingKey }
+        recentKeys.insert(window.orderingKey, at: 0)
+
+        if recentKeys.count > maxRecentSelectionCount {
+            recentKeys.removeLast(recentKeys.count - maxRecentSelectionCount)
+        }
+
+        UserDefaults.standard.set(recentKeys, forKey: recentSelectionKeysDefaultsKey)
     }
 
     private func activate(_ window: WindowInfo) {
