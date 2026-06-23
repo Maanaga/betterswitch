@@ -84,7 +84,7 @@ private struct WindowRow: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(width: 42, height: 42)
                 .padding(8)
-                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+                .liquidGlassFrame(cornerRadius: 16, isSelected: false)
 
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
@@ -107,28 +107,55 @@ private struct WindowRow: View {
             }
 
             Spacer(minLength: 12)
-
-            Image(systemName: "return")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(isSelected ? .white.opacity(0.92) : .secondary)
-                .frame(width: 28, height: 28)
-                .background(isSelected ? Color.accentColor.opacity(0.9) : .white.opacity(0.08), in: Circle())
-                .opacity(isSelected ? 1 : 0.45)
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 74)
-        .background {
-            RoundedRectangle(cornerRadius: 20, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .fill(isSelected ? Color.accentColor.opacity(0.28) : Color.white.opacity(0.08))
+        .liquidGlassFrame(cornerRadius: 20, isSelected: isSelected)
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+}
+
+private extension View {
+    func liquidGlassFrame(cornerRadius: CGFloat, isSelected: Bool) -> some View {
+        modifier(LiquidGlassFrame(cornerRadius: cornerRadius, isSelected: isSelected))
+    }
+}
+
+private struct LiquidGlassFrame: ViewModifier {
+    let cornerRadius: CGFloat
+    let isSelected: Bool
+
+    func body(content: Content) -> some View {
+        if #available(macOS 26.0, *) {
+            content
+                .background {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(isSelected ? Color.accentColor.opacity(0.40) : Color.clear)
                 }
+                .glassEffect(
+                    .regular
+                        .tint(isSelected ? Color.accentColor.opacity(0.42) : Color.white.opacity(0.08))
+                        .interactive(isSelected),
+                    in: .rect(cornerRadius: cornerRadius)
+                )
                 .overlay {
-                    RoundedRectangle(cornerRadius: 20, style: .continuous)
-                        .strokeBorder(isSelected ? Color.accentColor.opacity(0.72) : Color.white.opacity(0.12), lineWidth: 1)
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .strokeBorder(isSelected ? Color.accentColor.opacity(0.9) : Color.white.opacity(0.14), lineWidth: 1)
+                }
+        } else {
+            content
+                .background {
+                    RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                        .fill(.ultraThinMaterial)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .fill(isSelected ? Color.accentColor.opacity(0.62) : Color.white.opacity(0.08))
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .strokeBorder(isSelected ? Color.accentColor.opacity(0.9) : Color.white.opacity(0.12), lineWidth: 1)
+                        }
                 }
         }
-        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }

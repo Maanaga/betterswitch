@@ -17,13 +17,7 @@ struct WindowInfo: Identifiable, Hashable {
     }
 
     var detailText: String {
-        let details: [String] = [
-            bundleIdentifier,
-            "PID \(processIdentifier)",
-            bounds.map { "\(Int($0.width)) x \(Int($0.height))" }
-        ].compactMap { $0 }
-
-        return details.joined(separator: " | ")
+        bundleIdentifier ?? ""
     }
 
     var hasWindow: Bool {

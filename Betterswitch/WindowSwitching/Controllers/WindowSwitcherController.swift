@@ -1,6 +1,7 @@
 import AppKit
 import ApplicationServices
 import Combine
+import QuartzCore
 import SwiftUI
 
 @MainActor
@@ -11,6 +12,7 @@ final class WindowSwitcherController: ObservableObject {
 
     private var panel: NSPanel?
     private var keyboardMonitor: Any?
+    private var isAnimatingHide = false
 
     func toggle() {
         if panel?.isVisible == true {
@@ -30,12 +32,17 @@ final class WindowSwitcherController: ObservableObject {
 
         center(panel: panel)
         NSApp.activate(ignoringOtherApps: true)
-        panel.makeKeyAndOrderFront(nil)
+        animateIn(panel)
         installKeyboardMonitor()
     }
 
     func hide() {
-        panel?.orderOut(nil)
+        guard let panel, panel.isVisible, !isAnimatingHide else {
+            removeKeyboardMonitor()
+            return
+        }
+
+        animateOut(panel)
         removeKeyboardMonitor()
     }
 
@@ -78,7 +85,7 @@ final class WindowSwitcherController: ObservableObject {
         hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         let panel = NSPanel(
-            contentRect: NSRect(x: 0, y: 0, width: 760, height: 560),
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 560),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -94,10 +101,62 @@ final class WindowSwitcherController: ObservableObject {
         self.panel = panel
     }
 
+    private func animateIn(_ panel: NSPanel) {
+        let finalFrame = panel.frame
+        let startFrame = scaledFrame(from: finalFrame, scale: 0.94)
+
+        panel.alphaValue = 0
+        panel.setFrame(startFrame, display: true)
+        panel.makeKeyAndOrderFront(nil)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.18
+            context.timingFunction = CAMediaTimingFunction(name: .easeOut)
+            panel.animator().alphaValue = 1
+            panel.animator().setFrame(finalFrame, display: true)
+        }
+    }
+
+    private func animateOut(_ panel: NSPanel) {
+        isAnimatingHide = true
+        let startFrame = panel.frame
+        let endFrame = scaledFrame(from: startFrame, scale: 0.96)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.14
+            context.timingFunction = CAMediaTimingFunction(name: .easeIn)
+            panel.animator().alphaValue = 0
+            panel.animator().setFrame(endFrame, display: true)
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return
+                }
+
+                self.panel?.orderOut(nil)
+                self.panel?.alphaValue = 1
+                self.panel?.setFrame(startFrame, display: false)
+                self.isAnimatingHide = false
+            }
+        }
+    }
+
+    private func scaledFrame(from frame: NSRect, scale: CGFloat) -> NSRect {
+        let width = frame.width * scale
+        let height = frame.height * scale
+
+        return NSRect(
+            x: frame.midX - width / 2,
+            y: frame.midY - height / 2,
+            width: width,
+            height: height
+        )
+    }
+
     private func center(panel: NSPanel) {
         let screen = NSScreen.main ?? NSScreen.screens.first
         let frame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let size = NSSize(width: min(760, frame.width - 80), height: min(560, frame.height - 80))
+        let size = NSSize(width: min(700, frame.width - 80), height: min(560, frame.height - 80))
         panel.setFrame(
             NSRect(
                 x: frame.midX - size.width / 2,
