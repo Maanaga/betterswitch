@@ -6,7 +6,7 @@ import SwiftUI
 @MainActor
 final class WindowSwitcherController: ObservableObject {
     @Published var windows: [WindowInfo] = []
-    @Published var selectedWindowID: UInt32?
+    @Published var selectedWindowID: String?
     @Published var accessibilityEnabled = AXIsProcessTrusted()
 
     private var panel: NSPanel?
@@ -40,7 +40,7 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     func refreshWindows() {
-        windows = WindowScanner.visibleWindows()
+        windows = WindowScanner.runningItems()
         selectedWindowID = windows.first?.id
     }
 
@@ -143,8 +143,13 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     private func activate(_ window: WindowInfo) {
+        guard window.hasWindow else {
+            activateApp(processIdentifier: window.processIdentifier)
+            return
+        }
+
         guard AXIsProcessTrusted() else {
-            NSRunningApplication(processIdentifier: window.processIdentifier)?.activate(options: [.activateAllWindows])
+            activateApp(processIdentifier: window.processIdentifier)
             return
         }
 
@@ -152,7 +157,7 @@ final class WindowSwitcherController: ObservableObject {
         var value: CFTypeRef?
         let result = AXUIElementCopyAttributeValue(appElement, kAXWindowsAttribute as CFString, &value)
         guard result == .success, let axWindows = value as? [AXUIElement] else {
-            NSRunningApplication(processIdentifier: window.processIdentifier)?.activate(options: [.activateAllWindows])
+            activateApp(processIdentifier: window.processIdentifier)
             return
         }
 
@@ -166,19 +171,32 @@ final class WindowSwitcherController: ObservableObject {
             AXUIElementCopyAttributeValue(axWindow, kAXPositionAttribute as CFString, &positionValue)
             AXUIElementCopyAttributeValue(axWindow, kAXSizeAttribute as CFString, &sizeValue)
 
-            if title == window.windowTitle || roughlyMatches(window, position: positionValue, size: sizeValue) {
-                NSRunningApplication(processIdentifier: window.processIdentifier)?.activate()
+            if title == window.windowTitle || roughlyMatches(window, title: title, position: positionValue, size: sizeValue) {
+                activateApp(processIdentifier: window.processIdentifier, allWindows: false)
                 AXUIElementPerformAction(axWindow, kAXRaiseAction as CFString)
                 AXUIElementSetAttributeValue(appElement, kAXFocusedWindowAttribute as CFString, axWindow)
                 return
             }
         }
 
-        NSRunningApplication(processIdentifier: window.processIdentifier)?.activate(options: [.activateAllWindows])
+        activateApp(processIdentifier: window.processIdentifier)
     }
 
-    private func roughlyMatches(_ window: WindowInfo, position: CFTypeRef?, size: CFTypeRef?) -> Bool {
+    private func activateApp(processIdentifier: pid_t, allWindows: Bool = true) {
+        guard let app = NSRunningApplication(processIdentifier: processIdentifier) else {
+            return
+        }
+
+        if app.isHidden {
+            app.unhide()
+        }
+
+        app.activate(options: allWindows ? [.activateAllWindows] : [])
+    }
+
+    private func roughlyMatches(_ window: WindowInfo, title: String, position: CFTypeRef?, size: CFTypeRef?) -> Bool {
         guard
+            window.windowTitle == nil || window.windowTitle == title,
             let position,
             let size,
             CFGetTypeID(position) == AXValueGetTypeID(),
@@ -192,9 +210,13 @@ final class WindowSwitcherController: ObservableObject {
         AXValueGetValue(position as! AXValue, .cgPoint, &point)
         AXValueGetValue(size as! AXValue, .cgSize, &windowSize)
 
-        return abs(point.x - window.bounds.minX) < 8
-            && abs(point.y - window.bounds.minY) < 8
-            && abs(windowSize.width - window.bounds.width) < 8
-            && abs(windowSize.height - window.bounds.height) < 8
+        guard let bounds = window.bounds else {
+            return false
+        }
+
+        return abs(point.x - bounds.minX) < 8
+            && abs(point.y - bounds.minY) < 8
+            && abs(windowSize.width - bounds.width) < 8
+            && abs(windowSize.height - bounds.height) < 8
     }
 }

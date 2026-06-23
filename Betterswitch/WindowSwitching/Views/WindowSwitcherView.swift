@@ -92,10 +92,12 @@ private struct WindowRow: View {
                         .font(.system(size: 15, weight: .semibold))
                         .lineLimit(1)
 
-                    Text(window.displayTitle)
-                        .font(.system(size: 14, weight: .medium))
-                        .foregroundStyle(.secondary)
-                        .lineLimit(1)
+                    if let secondaryTitle = window.secondaryTitle {
+                        Text(secondaryTitle)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(.secondary)
+                            .lineLimit(1)
+                    }
                 }
 
                 Text(window.detailText)
