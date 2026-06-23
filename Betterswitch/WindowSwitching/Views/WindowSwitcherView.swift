@@ -1,0 +1,105 @@
+import AppKit
+import SwiftUI
+
+struct WindowSwitcherView: View {
+    @ObservedObject var controller: WindowSwitcherController
+
+    var body: some View {
+        Group {
+            if controller.windows.isEmpty {
+                emptyState
+            } else {
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(controller.windows) { window in
+                            WindowRow(
+                                window: window,
+                                isSelected: controller.selectedWindowID == window.id
+                            )
+                            .onTapGesture {
+                                controller.select(window)
+                            }
+                        }
+                    }
+                    .padding(8)
+                }
+                .scrollIndicators(.hidden)
+            }
+        }
+        .frame(minWidth: 520, minHeight: 360)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "macwindow.badge.plus")
+                .font(.system(size: 38, weight: .regular))
+                .foregroundStyle(.secondary)
+            Text("No visible app windows")
+                .font(.system(size: 18, weight: .semibold))
+            Text("Open Chrome, Xcode, or another app window and press Command + ` again.")
+                .font(.system(size: 13))
+                .foregroundStyle(.secondary)
+        }
+        .padding(28)
+        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}
+
+private struct WindowRow: View {
+    let window: WindowInfo
+    let isSelected: Bool
+
+    var body: some View {
+        HStack(spacing: 14) {
+            Image(nsImage: window.ownerIcon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(width: 42, height: 42)
+                .padding(8)
+                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Text(window.appName)
+                        .font(.system(size: 15, weight: .semibold))
+                        .lineLimit(1)
+
+                    Text(window.displayTitle)
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                }
+
+                Text(window.detailText)
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundStyle(.tertiary)
+                    .lineLimit(1)
+            }
+
+            Spacer(minLength: 12)
+
+            Image(systemName: "return")
+                .font(.system(size: 13, weight: .semibold))
+                .foregroundStyle(isSelected ? .white.opacity(0.92) : .secondary)
+                .frame(width: 28, height: 28)
+                .background(isSelected ? Color.accentColor.opacity(0.9) : .white.opacity(0.08), in: Circle())
+                .opacity(isSelected ? 1 : 0.45)
+        }
+        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 74)
+        .background {
+            RoundedRectangle(cornerRadius: 20, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .fill(isSelected ? Color.accentColor.opacity(0.28) : Color.white.opacity(0.08))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 20, style: .continuous)
+                        .strokeBorder(isSelected ? Color.accentColor.opacity(0.72) : Color.white.opacity(0.12), lineWidth: 1)
+                }
+        }
+        .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+}
