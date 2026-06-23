@@ -9,24 +9,51 @@ struct WindowSwitcherView: View {
             if controller.windows.isEmpty {
                 emptyState
             } else {
-                ScrollView {
-                    LazyVStack(spacing: 12) {
-                        ForEach(controller.windows) { window in
-                            WindowRow(
-                                window: window,
-                                isSelected: controller.selectedWindowID == window.id
-                            )
-                            .onTapGesture {
-                                controller.select(window)
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(controller.windows) { window in
+                                WindowRow(
+                                    window: window,
+                                    isSelected: controller.selectedWindowID == window.id
+                                )
+                                .id(window.id)
+                                .onTapGesture {
+                                    controller.select(window)
+                                }
                             }
                         }
+                        .padding(8)
                     }
-                    .padding(8)
+                    .scrollIndicators(.never)
+                    .onAppear {
+                        scrollToSelection(with: proxy, animated: false)
+                    }
+                    .onChange(of: controller.selectedWindowID) {
+                        scrollToSelection(with: proxy, animated: true)
+                    }
                 }
-                .scrollIndicators(.hidden)
             }
         }
         .frame(minWidth: 520, minHeight: 360)
+    }
+
+    private func scrollToSelection(with proxy: ScrollViewProxy, animated: Bool) {
+        guard let selectedWindowID = controller.selectedWindowID else {
+            return
+        }
+
+        let scroll = {
+            proxy.scrollTo(selectedWindowID, anchor: .center)
+        }
+
+        if animated {
+            withAnimation(.snappy(duration: 0.16)) {
+                scroll()
+            }
+        } else {
+            scroll()
+        }
     }
 
     private var emptyState: some View {
