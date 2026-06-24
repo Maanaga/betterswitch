@@ -31,4 +31,16 @@ struct WindowInfo: Identifiable, Hashable {
     var hasWindow: Bool {
         true
     }
+
+    func matchesSearch(_ query: String) -> Bool {
+        let searchableText = [
+            appName,
+            windowTitle,
+            bundleIdentifier
+        ]
+        .compactMap { $0 }
+        .joined(separator: " ")
+
+        return searchableText.localizedCaseInsensitiveContains(query)
+    }
 }

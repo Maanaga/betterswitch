@@ -5,14 +5,16 @@ struct WindowSwitcherView: View {
     @ObservedObject var controller: WindowSwitcherController
 
     var body: some View {
-        Group {
+        VStack(spacing: 10) {
             if controller.windows.isEmpty {
                 emptyState
             } else {
+                searchField
+
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(spacing: 12) {
-                            ForEach(controller.windows) { window in
+                            ForEach(controller.filteredWindows) { window in
                                 WindowRow(
                                     window: window,
                                     isSelected: controller.selectedWindowID == window.id
@@ -36,6 +38,7 @@ struct WindowSwitcherView: View {
             }
         }
         .frame(minWidth: 520, minHeight: 360)
+        .searchable(text: $controller.searchText, prompt: "Search apps and windows")
     }
 
     private func scrollToSelection(with proxy: ScrollViewProxy, animated: Bool) {
@@ -70,6 +73,39 @@ struct WindowSwitcherView: View {
         .padding(28)
         .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var searchField: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 15, weight: .semibold))
+                .foregroundStyle(.secondary)
+
+            KeyboardRoutingSearchField(
+                text: $controller.searchText,
+                placeholder: "Search apps and windows",
+                onMoveSelection: controller.moveSelection,
+                onActivateSelection: controller.activateSelectedWindow,
+                onDismiss: controller.hide
+            )
+            .frame(height: 30)
+
+            if !controller.searchText.isEmpty {
+                Button {
+                    controller.searchText = ""
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+        .padding(.horizontal, 14)
+        .padding(.vertical, 10)
+        .liquidGlassFrame(cornerRadius: 30, isSelected: false)
+        .padding(.horizontal, 8)
+        .padding(.top, 8)
     }
 }
 
@@ -112,6 +148,96 @@ private struct WindowRow: View {
         .frame(maxWidth: .infinity, minHeight: 74)
         .liquidGlassFrame(cornerRadius: 20, isSelected: isSelected)
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
+    }
+}
+
+private struct KeyboardRoutingSearchField: NSViewRepresentable {
+    @Binding var text: String
+    let placeholder: String
+    let onMoveSelection: (Int) -> Void
+    let onActivateSelection: () -> Void
+    let onDismiss: () -> Void
+
+    func makeNSView(context: Context) -> RoutingTextField {
+        let textField = RoutingTextField()
+        textField.delegate = context.coordinator
+        textField.isBordered = false
+        textField.drawsBackground = false
+        textField.focusRingType = .none
+        textField.font = .systemFont(ofSize: 15, weight: .medium)
+        textField.textColor = .labelColor
+        textField.placeholderString = placeholder
+        textField.onMoveSelection = onMoveSelection
+        textField.onActivateSelection = onActivateSelection
+        textField.onDismiss = onDismiss
+        return textField
+    }
+
+    func updateNSView(_ nsView: RoutingTextField, context: Context) {
+        if nsView.stringValue != text {
+            nsView.stringValue = text
+        }
+
+        nsView.onMoveSelection = onMoveSelection
+        nsView.onActivateSelection = onActivateSelection
+        nsView.onDismiss = onDismiss
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(text: $text)
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        @Binding private var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let textField = notification.object as? NSTextField else {
+                return
+            }
+            text = textField.stringValue
+        }
+    }
+
+    final class RoutingTextField: NSTextField {
+        var onMoveSelection: ((Int) -> Void)?
+        var onActivateSelection: (() -> Void)?
+        var onDismiss: (() -> Void)?
+        private var didRequestInitialFocus = false
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+
+            guard !didRequestInitialFocus else {
+                return
+            }
+
+            didRequestInitialFocus = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self else {
+                    return
+                }
+                self.window?.makeFirstResponder(self)
+            }
+        }
+
+        override func keyDown(with event: NSEvent) {
+            switch event.keyCode {
+            case 53:
+                onDismiss?()
+            case 36:
+                onActivateSelection?()
+            case 125:
+                onMoveSelection?(1)
+            case 126:
+                onMoveSelection?(-1)
+            default:
+                super.keyDown(with: event)
+            }
+        }
     }
 }
 

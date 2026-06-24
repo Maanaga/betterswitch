@@ -9,6 +9,11 @@ final class WindowSwitcherController: ObservableObject {
     @Published var windows: [WindowInfo] = []
     @Published var selectedWindowID: String?
     @Published var accessibilityEnabled = AXIsProcessTrusted()
+    @Published var searchText = "" {
+        didSet {
+            selectedWindowID = filteredWindows.first?.id
+        }
+    }
 
     private let recentSelectionKeysDefaultsKey = "recentSelectionKeys"
     private let maxRecentSelectionCount = 40
@@ -25,6 +30,7 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     func show() {
+        searchText = ""
         refreshWindows()
         accessibilityEnabled = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue(): true] as CFDictionary)
         makePanelIfNeeded()
@@ -50,7 +56,7 @@ final class WindowSwitcherController: ObservableObject {
 
     func refreshWindows() {
         windows = orderedWindows(WindowScanner.runningItems())
-        selectedWindowID = windows.first?.id
+        selectedWindowID = filteredWindows.first?.id
     }
 
     func select(_ window: WindowInfo) {
@@ -61,21 +67,31 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     func moveSelection(_ direction: Int) {
-        guard !windows.isEmpty else {
+        let visibleWindows = filteredWindows
+        guard !visibleWindows.isEmpty else {
             return
         }
 
-        let currentIndex = windows.firstIndex { $0.id == selectedWindowID } ?? 0
-        let nextIndex = (currentIndex + direction + windows.count) % windows.count
-        selectedWindowID = windows[nextIndex].id
+        let currentIndex = visibleWindows.firstIndex { $0.id == selectedWindowID } ?? 0
+        let nextIndex = (currentIndex + direction + visibleWindows.count) % visibleWindows.count
+        selectedWindowID = visibleWindows[nextIndex].id
     }
 
     func activateSelectedWindow() {
-        guard let selectedWindowID, let window = windows.first(where: { $0.id == selectedWindowID }) else {
+        guard let selectedWindowID, let window = filteredWindows.first(where: { $0.id == selectedWindowID }) else {
             hide()
             return
         }
         select(window)
+    }
+
+    var filteredWindows: [WindowInfo] {
+        let query = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !query.isEmpty else {
+            return windows
+        }
+
+        return windows.filter { $0.matchesSearch(query) }
     }
 
     private func makePanelIfNeeded() {
@@ -87,7 +103,7 @@ final class WindowSwitcherController: ObservableObject {
         let hostingView = NSHostingView(rootView: view)
         hostingView.wantsLayer = true
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
-        let panel = NSPanel(
+        let panel = SwitcherPanel(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 560),
             styleMask: [.borderless, .fullSizeContentView],
             backing: .buffered,
@@ -315,5 +331,15 @@ final class WindowSwitcherController: ObservableObject {
             && abs(point.y - bounds.minY) < 8
             && abs(windowSize.width - bounds.width) < 8
             && abs(windowSize.height - bounds.height) < 8
+    }
+}
+
+private final class SwitcherPanel: NSPanel {
+    override var canBecomeKey: Bool {
+        true
+    }
+
+    override var canBecomeMain: Bool {
+        true
     }
 }
