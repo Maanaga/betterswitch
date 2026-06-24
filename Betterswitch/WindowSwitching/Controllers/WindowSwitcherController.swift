@@ -116,7 +116,7 @@ final class WindowSwitcherController: ObservableObject {
         panel.isMovableByWindowBackground = true
         panel.backgroundColor = .clear
         panel.isOpaque = false
-        panel.hasShadow = true
+        panel.hasShadow = false
         self.panel = panel
     }
 
