@@ -1,3 +1,10 @@
+![macOS](https://img.shields.io/badge/macOS-26.2%2B-blue)
+![Swift](https://img.shields.io/badge/Swift-5.0%2B-orange)
+![UI](https://img.shields.io/badge/UI-SwiftUI%20%2B%20AppKit-purple)
+![Xcode](https://img.shields.io/badge/Xcode-26%2B-blue)
+![App](https://img.shields.io/badge/App-Menu%20Bar-black)
+![Permission](https://img.shields.io/badge/Permission-Accessibility-brightgreen)
+
 # Betterswitch
 
 Betterswitch is a macOS menu bar window switcher for quickly finding and opening running app windows.
