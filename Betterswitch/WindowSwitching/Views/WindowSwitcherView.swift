@@ -3,6 +3,7 @@ import SwiftUI
 
 struct WindowSwitcherView: View {
     @ObservedObject var controller: WindowSwitcherController
+    @State private var isAtScrollEnd = false
 
     var body: some View {
         VStack(spacing: 10) {
@@ -29,15 +30,24 @@ struct WindowSwitcherView: View {
                     }
                     .scrollIndicators(.never)
                     .mask {
-                        LinearGradient(
-                            stops: [
-                                .init(color: .black, location: 0),
-                                .init(color: .black, location: isSelectedRowLast ? 1 : 0.90),
-                                .init(color: .clear, location: 1)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
+                        if isAtScrollEnd {
+                            Color.black
+                        } else {
+                            LinearGradient(
+                                stops: [
+                                    .init(color: .black, location: 0),
+                                    .init(color: .black, location: 0.90),
+                                    .init(color: .clear, location: 1)
+                                ],
+                                startPoint: .top,
+                                endPoint: .bottom
+                            )
+                        }
+                    }
+                    .onScrollGeometryChange(for: Bool.self) { geometry in
+                        geometry.visibleRect.maxY >= geometry.contentSize.height - 1
+                    } action: { _, isAtScrollEnd in
+                        self.isAtScrollEnd = isAtScrollEnd
                     }
                     .onAppear {
                         scrollToSelection(with: proxy, animated: false)
@@ -50,10 +60,6 @@ struct WindowSwitcherView: View {
         }
         .frame(minWidth: 520, minHeight: 360)
         .searchable(text: $controller.searchText, prompt: "Search apps and windows")
-    }
-
-    private var isSelectedRowLast: Bool {
-        controller.selectedWindowID == controller.filteredWindows.last?.id
     }
 
     private func scrollToSelection(with proxy: ScrollViewProxy, animated: Bool) {
