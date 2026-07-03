@@ -124,7 +124,7 @@ struct WindowSwitcherView: View {
         }
         .padding(.horizontal, 14)
         .padding(.vertical, 10)
-        .liquidGlassFrame(cornerRadius: 30, isSelected: false)
+        .liquidGlassFrame(cornerRadius: 30, isSelected: false, darkened: true)
         .padding(.horizontal, 8)
         .padding(.top, 8)
     }
@@ -167,7 +167,7 @@ private struct WindowRow: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, minHeight: 74)
-        .liquidGlassFrame(cornerRadius: 20, isSelected: isSelected)
+        .liquidGlassFrame(cornerRadius: 20, isSelected: isSelected, darkened: true)
         .contentShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 }
@@ -263,25 +263,34 @@ private struct KeyboardRoutingSearchField: NSViewRepresentable {
 }
 
 private extension View {
-    func liquidGlassFrame(cornerRadius: CGFloat, isSelected: Bool) -> some View {
-        modifier(LiquidGlassFrame(cornerRadius: cornerRadius, isSelected: isSelected))
+    func liquidGlassFrame(cornerRadius: CGFloat, isSelected: Bool, darkened: Bool = false) -> some View {
+        modifier(LiquidGlassFrame(cornerRadius: cornerRadius, isSelected: isSelected, darkened: darkened))
     }
 }
 
 private struct LiquidGlassFrame: ViewModifier {
     let cornerRadius: CGFloat
     let isSelected: Bool
+    let darkened: Bool
 
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
             content
                 .background {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(isSelected ? Color.accentColor.opacity(0.40) : Color.clear)
+                        .fill(darkened ? Color.black.opacity(0.16) : Color.clear)
+                        .overlay {
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .fill(isSelected ? Color.accentColor.opacity(0.34) : Color.clear)
+                        }
                 }
                 .glassEffect(
                     .regular
-                        .tint(isSelected ? Color.accentColor.opacity(0.42) : Color.white.opacity(0.08))
+                        .tint(
+                            isSelected
+                                ? Color.accentColor.opacity(0.38)
+                                : (darkened ? Color.black.opacity(0.12) : Color.white.opacity(0.08))
+                        )
                         .interactive(isSelected),
                     in: .rect(cornerRadius: cornerRadius)
                 )
@@ -296,7 +305,11 @@ private struct LiquidGlassFrame: ViewModifier {
                         .fill(.ultraThinMaterial)
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                .fill(isSelected ? Color.accentColor.opacity(0.62) : Color.white.opacity(0.08))
+                                .fill(darkened ? Color.black.opacity(0.16) : Color.white.opacity(0.08))
+                        }
+                        .overlay {
+                            RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                                .fill(isSelected ? Color.accentColor.opacity(0.52) : Color.clear)
                         }
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)

@@ -54,6 +54,14 @@ final class WindowSwitcherController: ObservableObject {
         removeKeyboardMonitor()
     }
 
+    func dismissImmediately() {
+        removeKeyboardMonitor()
+        guard let panel else { return }
+        panel.orderOut(nil)
+        panel.alphaValue = 1
+        isAnimatingHide = false
+    }
+
     func refreshWindows() {
         windows = orderedWindows(WindowScanner.runningItems())
         selectedWindowID = filteredWindows.first?.id

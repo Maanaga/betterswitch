@@ -96,6 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func showOptions() {
+        switcherController?.dismissImmediately()
         optionsWindowController?.show()
     }
 
