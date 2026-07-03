@@ -7,10 +7,21 @@ final class HotKeyController {
     private let switcherAction: () -> Void
     private let optionsAction: () -> Void
 
-    init(switcherAction: @escaping () -> Void, optionsAction: @escaping () -> Void) {
+    init(
+        switcherShortcut: GlobalShortcut,
+        alternateSwitcherShortcut: GlobalShortcut,
+        optionsShortcut: GlobalShortcut,
+        switcherAction: @escaping () -> Void,
+        optionsAction: @escaping () -> Void
+    ) {
         self.switcherAction = switcherAction
         self.optionsAction = optionsAction
-        register()
+        installEventHandler()
+        update(
+            switcherShortcut: switcherShortcut,
+            alternateSwitcherShortcut: alternateSwitcherShortcut,
+            optionsShortcut: optionsShortcut
+        )
     }
 
     deinit {
@@ -22,7 +33,30 @@ final class HotKeyController {
         }
     }
 
-    private func register() {
+    @discardableResult
+    func update(
+        switcherShortcut: GlobalShortcut,
+        alternateSwitcherShortcut: GlobalShortcut,
+        optionsShortcut: GlobalShortcut
+    ) -> String? {
+        unregisterHotKeys()
+
+        var failures: [String] = []
+        if !registerHotKey(id: 1, shortcut: switcherShortcut) {
+            failures.append(switcherShortcut.displayString)
+        }
+        if !registerHotKey(id: 2, shortcut: alternateSwitcherShortcut) {
+            failures.append(alternateSwitcherShortcut.displayString)
+        }
+        if !registerHotKey(id: 3, shortcut: optionsShortcut) {
+            failures.append(optionsShortcut.displayString)
+        }
+
+        guard !failures.isEmpty else { return nil }
+        return "Couldn’t register \(failures.joined(separator: ", ")). Another app or macOS may already use it."
+    }
+
+    private func installEventHandler() {
         var eventType = EventTypeSpec(eventClass: OSType(kEventClassKeyboard), eventKind: OSType(kEventHotKeyPressed))
         let pointer = Unmanaged.passUnretained(self).toOpaque()
 
@@ -65,17 +99,21 @@ final class HotKeyController {
             &eventHandlerRef
         )
 
-        registerHotKey(id: 1, keyCode: UInt32(kVK_ANSI_Grave), modifiers: UInt32(cmdKey))
-        registerHotKey(id: 2, keyCode: UInt32(kVK_ANSI_Grave), modifiers: UInt32(cmdKey | shiftKey))
-        registerHotKey(id: 3, keyCode: UInt32(kVK_ANSI_B), modifiers: UInt32(cmdKey | optionKey))
     }
 
-    private func registerHotKey(id: UInt32, keyCode: UInt32, modifiers: UInt32) {
+    private func unregisterHotKeys() {
+        for hotKeyRef in hotKeyRefs {
+            UnregisterEventHotKey(hotKeyRef)
+        }
+        hotKeyRefs.removeAll()
+    }
+
+    private func registerHotKey(id: UInt32, shortcut: GlobalShortcut) -> Bool {
         let hotKeyID = EventHotKeyID(signature: OSType("BTSW".fourCharCode), id: id)
         var hotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
-            keyCode,
-            modifiers,
+            shortcut.keyCode,
+            shortcut.modifiers,
             hotKeyID,
             GetApplicationEventTarget(),
             0,
@@ -84,7 +122,9 @@ final class HotKeyController {
 
         if status == noErr, let hotKeyRef {
             hotKeyRefs.append(hotKeyRef)
+            return true
         }
+        return false
     }
 }
 

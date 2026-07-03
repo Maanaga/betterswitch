@@ -70,8 +70,46 @@ struct OptionsView: View {
     private var shortcutsView: some View {
         Form {
             Section("Window Switcher") {
-                shortcutRow("Show switcher", keys: "⌘ `")
-                shortcutRow("Show switcher (alternate)", keys: "⇧ ⌘ `")
+                shortcutRow(
+                    "Show switcher",
+                    shortcut: Binding(
+                        get: { preferences.switcherShortcut },
+                        set: preferences.setSwitcherShortcut
+                    )
+                )
+                shortcutRow(
+                    "Show switcher (alternate)",
+                    shortcut: Binding(
+                        get: { preferences.alternateSwitcherShortcut },
+                        set: preferences.setAlternateSwitcherShortcut
+                    )
+                )
+            }
+
+            Section("Application") {
+                shortcutRow(
+                    "Open options",
+                    shortcut: Binding(
+                        get: { preferences.optionsShortcut },
+                        set: preferences.setOptionsShortcut
+                    )
+                )
+            }
+
+            Section {
+                Button("Restore Default Shortcuts") {
+                    preferences.resetShortcuts()
+                }
+            } footer: {
+                Text("Click a shortcut, then press one or more modifiers and a non-modifier key. Press Escape to cancel.")
+            }
+
+            if let shortcutErrorMessage = preferences.shortcutErrorMessage {
+                Section {
+                    Text(shortcutErrorMessage)
+                        .foregroundStyle(.red)
+                        .textSelection(.enabled)
+                }
             }
         }
         .formStyle(.grouped)
@@ -79,13 +117,10 @@ struct OptionsView: View {
         .padding(.top, 8)
     }
 
-    private func shortcutRow(_ title: String, keys: String) -> some View {
+    private func shortcutRow(_ title: String, shortcut: Binding<GlobalShortcut>) -> some View {
         LabeledContent(title) {
-            Text(keys)
-                .font(.system(.body, design: .rounded, weight: .medium))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
-                .background(.quaternary, in: RoundedRectangle(cornerRadius: 6))
+            ShortcutRecorder(shortcut: shortcut)
+                .frame(width: 150, height: 26)
         }
     }
 

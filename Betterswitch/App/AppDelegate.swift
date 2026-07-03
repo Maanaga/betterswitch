@@ -9,10 +9,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var optionsWindowController: OptionsWindowController?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let preferences = PreferencesModel()
+        self.preferences = preferences
+
         let switcherController = WindowSwitcherController()
         self.switcherController = switcherController
 
         let hotKeyController = HotKeyController(
+            switcherShortcut: preferences.switcherShortcut,
+            alternateSwitcherShortcut: preferences.alternateSwitcherShortcut,
+            optionsShortcut: preferences.optionsShortcut,
             switcherAction: {
                 switcherController.toggle()
             },
@@ -22,11 +28,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         self.hotKeyController = hotKeyController
 
-        let preferences = PreferencesModel()
         preferences.menuBarVisibilityChanged = { [weak self] shouldShow in
             self?.updateMenuBarVisibility(shouldShow)
         }
-        self.preferences = preferences
+        preferences.shortcutsChanged = { [weak self] in
+            self?.refreshHotKeys()
+        }
         optionsWindowController = OptionsWindowController(preferences: preferences)
 
         updateMenuBarVisibility(preferences.showMenuBarIcon)
@@ -48,9 +55,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let showItem = NSMenuItem(title: "Show Switcher", action: #selector(showSwitcher), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
-        let optionsItem = NSMenuItem(title: "Options…", action: #selector(showOptions), keyEquivalent: "b")
+        let optionsItem = NSMenuItem(title: "Options…", action: #selector(showOptions), keyEquivalent: "")
         optionsItem.target = self
-        optionsItem.keyEquivalentModifierMask = [.command, .option]
         menu.addItem(optionsItem)
         menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quit Betterswitch", action: #selector(quit), keyEquivalent: "q")
@@ -74,6 +80,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             NSApp.setActivationPolicy(.regular)
         }
+    }
+
+    private func refreshHotKeys() -> String? {
+        guard let preferences, let hotKeyController else { return nil }
+        return hotKeyController.update(
+            switcherShortcut: preferences.switcherShortcut,
+            alternateSwitcherShortcut: preferences.alternateSwitcherShortcut,
+            optionsShortcut: preferences.optionsShortcut
+        )
     }
 
     @objc private func showSwitcher() {
