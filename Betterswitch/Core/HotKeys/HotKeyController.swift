@@ -4,10 +4,12 @@ import Foundation
 final class HotKeyController {
     private var hotKeyRefs: [EventHotKeyRef] = []
     private var eventHandlerRef: EventHandlerRef?
-    private let action: () -> Void
+    private let switcherAction: () -> Void
+    private let optionsAction: () -> Void
 
-    init(action: @escaping () -> Void) {
-        self.action = action
+    init(switcherAction: @escaping () -> Void, optionsAction: @escaping () -> Void) {
+        self.switcherAction = switcherAction
+        self.optionsAction = optionsAction
         register()
     }
 
@@ -47,7 +49,14 @@ final class HotKeyController {
                 }
 
                 let controller = Unmanaged<HotKeyController>.fromOpaque(userData).takeUnretainedValue()
-                controller.action()
+                switch hotKeyID.id {
+                case 1, 2:
+                    controller.switcherAction()
+                case 3:
+                    controller.optionsAction()
+                default:
+                    break
+                }
                 return noErr
             },
             1,
@@ -56,15 +65,16 @@ final class HotKeyController {
             &eventHandlerRef
         )
 
-        registerHotKey(id: 1, modifiers: UInt32(cmdKey))
-        registerHotKey(id: 2, modifiers: UInt32(cmdKey | shiftKey))
+        registerHotKey(id: 1, keyCode: UInt32(kVK_ANSI_Grave), modifiers: UInt32(cmdKey))
+        registerHotKey(id: 2, keyCode: UInt32(kVK_ANSI_Grave), modifiers: UInt32(cmdKey | shiftKey))
+        registerHotKey(id: 3, keyCode: UInt32(kVK_ANSI_B), modifiers: UInt32(cmdKey | optionKey))
     }
 
-    private func registerHotKey(id: UInt32, modifiers: UInt32) {
+    private func registerHotKey(id: UInt32, keyCode: UInt32, modifiers: UInt32) {
         let hotKeyID = EventHotKeyID(signature: OSType("BTSW".fourCharCode), id: id)
         var hotKeyRef: EventHotKeyRef?
         let status = RegisterEventHotKey(
-            UInt32(kVK_ANSI_Grave),
+            keyCode,
             modifiers,
             hotKeyID,
             GetApplicationEventTarget(),
