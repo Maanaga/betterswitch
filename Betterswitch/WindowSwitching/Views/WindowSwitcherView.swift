@@ -89,7 +89,7 @@ struct WindowSwitcherView: View {
                 .foregroundStyle(.secondary)
             Text("No visible app windows")
                 .font(.system(size: 18, weight: .semibold))
-            Text("Open Chrome, Xcode, or another app window and press Command + ` again.")
+            Text("Open any app window and press Command + ` again.")
                 .font(.system(size: 13))
                 .foregroundStyle(.secondary)
         }
