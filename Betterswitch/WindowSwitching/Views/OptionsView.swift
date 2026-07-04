@@ -65,7 +65,7 @@ struct OptionsView: View {
             }
 
             Section("About") {
-                LabeledContent("Version", value: "0.2.0")
+                LabeledContent("Version", value: appVersion)
             }
 
             if let errorMessage = preferences.errorMessage {
@@ -138,12 +138,12 @@ struct OptionsView: View {
         }
     }
 
-//    private var appVersion: String {
-//        let info = Bundle.main.infoDictionary
-//        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
-//        let build = info?["CFBundleVersion"] as? String
-//
-//        guard let build, build != version else { return version }
-//        return "\(version) (\(build))"
-//    }
+    private var appVersion: String {
+        let info = Bundle.main.infoDictionary
+        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+        let build = info?["CFBundleVersion"] as? String
+
+        guard let build, build != version else { return version }
+        return "\(version) (\(build))"
+    }
 }
