@@ -16,6 +16,7 @@ private enum OptionsSection: String, CaseIterable, Identifiable {
 
 struct OptionsView: View {
     @ObservedObject var preferences: PreferencesModel
+    @AppStorage("glassDarkness") private var glassDarkness = 0.16
     @State private var selection: OptionsSection? = .settings
 
     var body: some View {
@@ -50,8 +51,21 @@ struct OptionsView: View {
                 ))
             }
 
+            Section("Appearance") {
+                LabeledContent("Glass darkness") {
+                    HStack(spacing: 10) {
+                        Slider(value: $glassDarkness, in: 0...0.50)
+                            .frame(width: 180)
+                        Text("\(Int((glassDarkness * 200).rounded()))%")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                            .frame(width: 38, alignment: .trailing)
+                    }
+                }
+            }
+
             Section("About") {
-                LabeledContent("Version", value: appVersion)
+                LabeledContent("Version", value: "0.2.0")
             }
 
             if let errorMessage = preferences.errorMessage {
@@ -124,12 +138,12 @@ struct OptionsView: View {
         }
     }
 
-    private var appVersion: String {
-        let info = Bundle.main.infoDictionary
-        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
-        let build = info?["CFBundleVersion"] as? String
-
-        guard let build, build != version else { return version }
-        return "\(version) (\(build))"
-    }
+//    private var appVersion: String {
+//        let info = Bundle.main.infoDictionary
+//        let version = info?["CFBundleShortVersionString"] as? String ?? "—"
+//        let build = info?["CFBundleVersion"] as? String
+//
+//        guard let build, build != version else { return version }
+//        return "\(version) (\(build))"
+//    }
 }

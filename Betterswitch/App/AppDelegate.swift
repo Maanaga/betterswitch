@@ -55,7 +55,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let showItem = NSMenuItem(title: "Show Switcher", action: #selector(showSwitcher), keyEquivalent: "")
         showItem.target = self
         menu.addItem(showItem)
-        let optionsItem = NSMenuItem(title: "Options…", action: #selector(showOptions), keyEquivalent: "")
+        let optionsItem = NSMenuItem(title: "Settings…", action: #selector(showOptions), keyEquivalent: "")
         optionsItem.target = self
         menu.addItem(optionsItem)
         menu.addItem(NSMenuItem.separator())
