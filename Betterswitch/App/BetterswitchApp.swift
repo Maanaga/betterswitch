@@ -15,5 +15,13 @@ struct BetterswitchApp: App {
         Settings {
             EmptyView()
         }
+        .commands {
+            CommandGroup(after: .appInfo) {
+                Button("Check for Updates…") {
+                    UpdateController.shared.checkForUpdates()
+                }
+                .disabled(!UpdateController.shared.isConfigured)
+            }
+        }
     }
 }

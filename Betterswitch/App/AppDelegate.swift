@@ -7,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var hotKeyController: HotKeyController?
     private var preferences: PreferencesModel?
     private var optionsWindowController: OptionsWindowController?
+    private let updateController = UpdateController.shared
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         let preferences = PreferencesModel()
@@ -58,6 +59,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let optionsItem = NSMenuItem(title: "Settings…", action: #selector(showOptions), keyEquivalent: "")
         optionsItem.target = self
         menu.addItem(optionsItem)
+        let checkForUpdatesItem = NSMenuItem(title: "Check for Updates…", action: nil, keyEquivalent: "")
+        updateController.configureCheckForUpdatesMenuItem(checkForUpdatesItem)
+        menu.addItem(checkForUpdatesItem)
         menu.addItem(NSMenuItem.separator())
         let quitItem = NSMenuItem(title: "Quit Betterswitch", action: #selector(quit), keyEquivalent: "q")
         quitItem.target = self
