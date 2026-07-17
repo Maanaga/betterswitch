@@ -341,7 +341,12 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     private var previewColumnCount: Int {
-        min(max(filteredWindows.count, 1), previewPreferredColumnCount)
+        let windowCount = filteredWindows.count
+        let countBasedColumns = windowCount > previewPreferredColumnCount * 3
+            ? min(6, Int(ceil(Double(windowCount) / 3.0)))
+            : previewPreferredColumnCount
+
+        return min(max(windowCount, 1), countBasedColumns)
     }
 
     private func rememberSelection(_ window: WindowInfo) {

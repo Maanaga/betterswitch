@@ -279,17 +279,23 @@ private struct PreviewWindowGrid: View {
     private let horizontalSpacing: CGFloat = 30
     private let verticalSpacing: CGFloat = 34
     private let minimumCardWidth: CGFloat = 220
+    private let thumbnailAspectRatio: CGFloat = 1.62
 
     var body: some View {
         GeometryReader { geometry in
             let widthBasedColumns = max(1, Int((geometry.size.width + horizontalSpacing) / (minimumCardWidth + horizontalSpacing)))
-            let columnCount = min(max(windows.count, 1), maxColumns, min(preferredColumns, widthBasedColumns))
+            let countBasedColumns = windows.count > preferredColumns * 3
+                ? min(maxColumns, Int(ceil(Double(windows.count) / 3.0)))
+                : preferredColumns
+            let columnCount = min(max(windows.count, 1), maxColumns, min(countBasedColumns, widthBasedColumns))
             let rowCount = Int(ceil(Double(windows.count) / Double(columnCount)))
             let availableWidth = max(geometry.size.width, 1)
             let availableHeight = max(geometry.size.height, 1)
             let cardWidth = (availableWidth - CGFloat(columnCount - 1) * horizontalSpacing) / CGFloat(columnCount)
             let cardHeight = (availableHeight - CGFloat(max(rowCount - 1, 0)) * verticalSpacing) / CGFloat(max(rowCount, 1))
-            let thumbnailHeight = max(120, min(cardHeight - 44, cardWidth * 0.64))
+            let maxThumbnailHeight = max(56, cardHeight - 42)
+            let thumbnailWidth = min(cardWidth, maxThumbnailHeight * thumbnailAspectRatio)
+            let thumbnailHeight = thumbnailWidth / thumbnailAspectRatio
 
             LazyVGrid(
                 columns: Array(repeating: GridItem(.flexible(), spacing: horizontalSpacing), count: columnCount),
@@ -301,6 +307,7 @@ private struct PreviewWindowGrid: View {
                         window: window,
                         thumbnail: thumbnails[window.id],
                         isSelected: selectedWindowID == window.id,
+                        thumbnailWidth: thumbnailWidth,
                         thumbnailHeight: thumbnailHeight
                     )
                     .frame(width: cardWidth, height: cardHeight)
@@ -318,12 +325,13 @@ private struct PreviewWindowCard: View {
     let window: WindowInfo
     let thumbnail: NSImage?
     let isSelected: Bool
+    let thumbnailWidth: CGFloat
     let thumbnailHeight: CGFloat
 
     var body: some View {
         VStack(spacing: 8) {
             preview
-                .frame(maxWidth: .infinity, minHeight: thumbnailHeight, maxHeight: thumbnailHeight)
+                .frame(width: thumbnailWidth, height: thumbnailHeight)
                 .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
                 .overlay {
