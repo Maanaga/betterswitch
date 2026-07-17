@@ -19,6 +19,7 @@ final class WindowSwitcherController: ObservableObject {
     let preferences: PreferencesModel
     private let recentSelectionKeysDefaultsKey = "recentSelectionKeys"
     private let maxRecentSelectionCount = 40
+    private let previewPreferredColumnCount = 4
     private let previewProvider = WindowPreviewProvider()
     private var panel: NSPanel?
     private var keyboardMonitor: Any?
@@ -97,6 +98,10 @@ final class WindowSwitcherController: ObservableObject {
         let currentIndex = visibleWindows.firstIndex { $0.id == selectedWindowID } ?? 0
         let nextIndex = (currentIndex + direction + visibleWindows.count) % visibleWindows.count
         selectedWindowID = visibleWindows[nextIndex].id
+    }
+
+    func movePreviewSelectionByRow(_ direction: Int) {
+        moveSelection(direction * previewColumnCount)
     }
 
     func activateSelectedWindow() {
@@ -284,16 +289,20 @@ final class WindowSwitcherController: ObservableObject {
                 }
                 return event
             case 125:
-                guard preferences.switcherLayout == .classicList else {
-                    return event
+                switch preferences.switcherLayout {
+                case .classicList:
+                    moveSelection(1)
+                case .previewThumbnails:
+                    movePreviewSelectionByRow(1)
                 }
-                moveSelection(1)
                 return nil
             case 126:
-                guard preferences.switcherLayout == .classicList else {
-                    return event
+                switch preferences.switcherLayout {
+                case .classicList:
+                    moveSelection(-1)
+                case .previewThumbnails:
+                    movePreviewSelectionByRow(-1)
                 }
-                moveSelection(-1)
                 return nil
             default:
                 return event
@@ -329,6 +338,10 @@ final class WindowSwitcherController: ObservableObject {
 
             return lhs.offset < rhs.offset
         }.map(\.element)
+    }
+
+    private var previewColumnCount: Int {
+        min(max(filteredWindows.count, 1), previewPreferredColumnCount)
     }
 
     private func rememberSelection(_ window: WindowInfo) {

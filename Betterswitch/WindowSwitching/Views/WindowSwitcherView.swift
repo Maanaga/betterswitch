@@ -187,6 +187,7 @@ struct WindowSwitcherView: View {
                 text: $controller.searchText,
                 placeholder: "Search apps and windows",
                 onMoveSelection: controller.moveSelection,
+                onMoveRowSelection: { _ in },
                 onActivateSelection: controller.activateSelectedWindow,
                 onDismiss: controller.hide,
                 navigationAxis: .vertical
@@ -216,6 +217,7 @@ struct WindowSwitcherView: View {
             text: $controller.searchText,
             placeholder: "",
             onMoveSelection: controller.moveSelection,
+            onMoveRowSelection: controller.movePreviewSelectionByRow,
             onActivateSelection: controller.activateSelectedWindow,
             onDismiss: controller.hide,
             navigationAxis: .horizontal
@@ -387,6 +389,7 @@ private struct KeyboardRoutingSearchField: NSViewRepresentable {
     @Binding var text: String
     let placeholder: String
     let onMoveSelection: (Int) -> Void
+    let onMoveRowSelection: (Int) -> Void
     let onActivateSelection: () -> Void
     let onDismiss: () -> Void
     let navigationAxis: KeyboardNavigationAxis
@@ -401,6 +404,7 @@ private struct KeyboardRoutingSearchField: NSViewRepresentable {
         textField.textColor = .labelColor
         textField.placeholderString = placeholder
         textField.onMoveSelection = onMoveSelection
+        textField.onMoveRowSelection = onMoveRowSelection
         textField.onActivateSelection = onActivateSelection
         textField.onDismiss = onDismiss
         textField.navigationAxis = navigationAxis
@@ -413,6 +417,7 @@ private struct KeyboardRoutingSearchField: NSViewRepresentable {
         }
 
         nsView.onMoveSelection = onMoveSelection
+        nsView.onMoveRowSelection = onMoveRowSelection
         nsView.onActivateSelection = onActivateSelection
         nsView.onDismiss = onDismiss
         nsView.navigationAxis = navigationAxis
@@ -439,6 +444,7 @@ private struct KeyboardRoutingSearchField: NSViewRepresentable {
 
     final class RoutingTextField: NSTextField {
         var onMoveSelection: ((Int) -> Void)?
+        var onMoveRowSelection: ((Int) -> Void)?
         var onActivateSelection: (() -> Void)?
         var onDismiss: (() -> Void)?
         var navigationAxis: KeyboardNavigationAxis = .vertical
@@ -482,13 +488,13 @@ private struct KeyboardRoutingSearchField: NSViewRepresentable {
                 if navigationAxis == .vertical {
                     onMoveSelection?(1)
                 } else {
-                    super.keyDown(with: event)
+                    onMoveRowSelection?(1)
                 }
             case 126:
                 if navigationAxis == .vertical {
                     onMoveSelection?(-1)
                 } else {
-                    super.keyDown(with: event)
+                    onMoveRowSelection?(-1)
                 }
             default:
                 super.keyDown(with: event)
