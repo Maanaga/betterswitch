@@ -9,17 +9,31 @@ final class WindowSwitcherController: ObservableObject {
     @Published var windows: [WindowInfo] = []
     @Published var selectedWindowID: String?
     @Published var accessibilityEnabled = AXIsProcessTrusted()
+    @Published var previewThumbnails: [String: NSImage] = [:]
+    @Published private var previewThumbnailsByCacheKey: [String: NSImage] = [:]
     @Published var searchText = "" {
         didSet {
             selectedWindowID = filteredWindows.first?.id
         }
     }
 
+    let preferences: PreferencesModel
     private let recentSelectionKeysDefaultsKey = "recentSelectionKeys"
     private let maxRecentSelectionCount = 40
+    private let previewPreferredColumnCount = 4
+    private let previewProvider = WindowPreviewProvider()
     private var panel: NSPanel?
     private var keyboardMonitor: Any?
+    private var previewLoadingTask: Task<Void, Never>?
     private var isAnimatingHide = false
+
+    init(preferences: PreferencesModel) {
+        self.preferences = preferences
+    }
+
+    deinit {
+        previewLoadingTask?.cancel()
+    }
 
     func toggle() {
         if panel?.isVisible == true {
@@ -64,7 +78,9 @@ final class WindowSwitcherController: ObservableObject {
 
     func refreshWindows() {
         windows = orderedWindows(WindowScanner.runningItems())
+        prunePreviewCache()
         selectedWindowID = filteredWindows.first?.id
+        loadPreviewThumbnailsIfNeeded()
     }
 
     func select(_ window: WindowInfo) {
@@ -85,6 +101,10 @@ final class WindowSwitcherController: ObservableObject {
         selectedWindowID = visibleWindows[nextIndex].id
     }
 
+    func movePreviewSelectionByRow(_ direction: Int) {
+        moveSelection(direction * previewColumnCount)
+    }
+
     func activateSelectedWindow() {
         guard let selectedWindowID, let window = filteredWindows.first(where: { $0.id == selectedWindowID }) else {
             hide()
@@ -100,6 +120,49 @@ final class WindowSwitcherController: ObservableObject {
         }
 
         return windows.filter { $0.matchesSearch(query) }
+    }
+
+    func loadPreviewThumbnailsIfNeeded() {
+        guard preferences.switcherLayout == .previewThumbnails else {
+            previewLoadingTask?.cancel()
+            return
+        }
+
+        let windowsNeedingPreviews = windows.filter {
+            previewThumbnails[$0.id] == nil && previewThumbnailsByCacheKey[$0.previewCacheKey] == nil
+        }
+        guard !windowsNeedingPreviews.isEmpty else {
+            return
+        }
+
+        previewLoadingTask?.cancel()
+        previewLoadingTask = Task { [weak self, previewProvider] in
+            for window in windowsNeedingPreviews {
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                let thumbnail = await previewProvider.thumbnail(for: window)
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                await MainActor.run { [weak self] in
+                    guard let self, self.windows.contains(where: { $0.id == window.id }) else {
+                        return
+                    }
+
+                    if let thumbnail {
+                        self.previewThumbnails[window.id] = thumbnail
+                        self.previewThumbnailsByCacheKey[window.previewCacheKey] = thumbnail
+                    }
+                }
+            }
+        }
+    }
+
+    func previewThumbnail(for window: WindowInfo) -> NSImage? {
+        previewThumbnails[window.id] ?? previewThumbnailsByCacheKey[window.previewCacheKey]
     }
 
     private func makePanelIfNeeded() {
@@ -126,6 +189,13 @@ final class WindowSwitcherController: ObservableObject {
         panel.isOpaque = false
         panel.hasShadow = false
         self.panel = panel
+    }
+
+    private func prunePreviewCache() {
+        let validIDs = Set(windows.map(\.id))
+        let validCacheKeys = Set(windows.map(\.previewCacheKey))
+        previewThumbnails = previewThumbnails.filter { validIDs.contains($0.key) }
+        previewThumbnailsByCacheKey = previewThumbnailsByCacheKey.filter { validCacheKeys.contains($0.key) }
     }
 
     private func animateIn(_ panel: NSPanel) {
@@ -183,7 +253,14 @@ final class WindowSwitcherController: ObservableObject {
     private func center(panel: NSPanel) {
         let screen = NSScreen.main ?? NSScreen.screens.first
         let frame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let size = NSSize(width: min(700, frame.width - 80), height: min(560, frame.height - 80))
+        let size: NSSize
+        switch preferences.switcherLayout {
+        case .classicList:
+            size = NSSize(width: min(700, frame.width - 80), height: min(560, frame.height - 80))
+        case .previewThumbnails:
+            size = NSSize(width: frame.width, height: frame.height)
+        }
+
         panel.setFrame(
             NSRect(
                 x: frame.midX - size.width / 2,
@@ -209,11 +286,33 @@ final class WindowSwitcherController: ObservableObject {
             case 36:
                 activateSelectedWindow()
                 return nil
+            case 123:
+                if preferences.switcherLayout == .previewThumbnails {
+                    moveSelection(-1)
+                    return nil
+                }
+                return event
+            case 124:
+                if preferences.switcherLayout == .previewThumbnails {
+                    moveSelection(1)
+                    return nil
+                }
+                return event
             case 125:
-                moveSelection(1)
+                switch preferences.switcherLayout {
+                case .classicList:
+                    moveSelection(1)
+                case .previewThumbnails:
+                    movePreviewSelectionByRow(1)
+                }
                 return nil
             case 126:
-                moveSelection(-1)
+                switch preferences.switcherLayout {
+                case .classicList:
+                    moveSelection(-1)
+                case .previewThumbnails:
+                    movePreviewSelectionByRow(-1)
+                }
                 return nil
             default:
                 return event
@@ -249,6 +348,15 @@ final class WindowSwitcherController: ObservableObject {
 
             return lhs.offset < rhs.offset
         }.map(\.element)
+    }
+
+    private var previewColumnCount: Int {
+        let windowCount = filteredWindows.count
+        let countBasedColumns = windowCount > previewPreferredColumnCount * 3
+            ? min(6, Int(ceil(Double(windowCount) / 3.0)))
+            : previewPreferredColumnCount
+
+        return min(max(windowCount, 1), countBasedColumns)
     }
 
     private func rememberSelection(_ window: WindowInfo) {

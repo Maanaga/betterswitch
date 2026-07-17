@@ -6,6 +6,7 @@ struct WindowInfo: Identifiable, Hashable {
     let windowTitle: String?
     let bundleIdentifier: String?
     let processIdentifier: pid_t
+    let windowNumber: Int?
     let bounds: CGRect?
     let ownerIcon: NSImage
 
@@ -21,6 +22,15 @@ struct WindowInfo: Identifiable, Hashable {
     }
 
     var orderingKey: String {
+        [
+            bundleIdentifier ?? appName,
+            windowTitle ?? "",
+            windowNumber.map(String.init) ?? "",
+            bounds.map { "\(Int($0.minX)):\(Int($0.minY)):\(Int($0.width)):\(Int($0.height))" } ?? ""
+        ].joined(separator: "|")
+    }
+
+    var previewCacheKey: String {
         [
             bundleIdentifier ?? appName,
             windowTitle ?? "",

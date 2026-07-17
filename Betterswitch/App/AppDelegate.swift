@@ -13,7 +13,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let preferences = PreferencesModel()
         self.preferences = preferences
 
-        let switcherController = WindowSwitcherController()
+        let switcherController = WindowSwitcherController(preferences: preferences)
         self.switcherController = switcherController
 
         let hotKeyController = HotKeyController(

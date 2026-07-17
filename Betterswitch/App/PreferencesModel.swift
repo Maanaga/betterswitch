@@ -2,10 +2,27 @@ import AppKit
 import Combine
 import ServiceManagement
 
+enum SwitcherLayout: String, CaseIterable, Codable, Identifiable {
+    case classicList
+    case previewThumbnails
+
+    var id: Self { self }
+
+    var displayName: String {
+        switch self {
+        case .classicList:
+            return "Classic List"
+        case .previewThumbnails:
+            return "Preview Thumbnails"
+        }
+    }
+}
+
 @MainActor
 final class PreferencesModel: ObservableObject {
     private enum Keys {
         static let showMenuBarIcon = "showMenuBarIcon"
+        static let switcherLayout = "switcherLayout"
         static let switcherShortcut = "switcherShortcut"
         static let alternateSwitcherShortcut = "alternateSwitcherShortcut"
         static let optionsShortcut = "optionsShortcut"
@@ -13,6 +30,7 @@ final class PreferencesModel: ObservableObject {
 
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var showMenuBarIcon: Bool
+    @Published private(set) var switcherLayout: SwitcherLayout
     @Published private(set) var switcherShortcut: GlobalShortcut
     @Published private(set) var alternateSwitcherShortcut: GlobalShortcut
     @Published private(set) var optionsShortcut: GlobalShortcut
@@ -26,6 +44,7 @@ final class PreferencesModel: ObservableObject {
         let defaults = UserDefaults.standard
         defaults.register(defaults: [Keys.showMenuBarIcon: true])
         showMenuBarIcon = defaults.bool(forKey: Keys.showMenuBarIcon)
+        switcherLayout = Self.loadSwitcherLayout()
         switcherShortcut = Self.loadShortcut(forKey: Keys.switcherShortcut, fallback: .showSwitcher)
         alternateSwitcherShortcut = Self.loadShortcut(
             forKey: Keys.alternateSwitcherShortcut,
@@ -57,6 +76,13 @@ final class PreferencesModel: ObservableObject {
         showMenuBarIcon = shouldShow
         UserDefaults.standard.set(shouldShow, forKey: Keys.showMenuBarIcon)
         menuBarVisibilityChanged?(shouldShow)
+    }
+
+    func setSwitcherLayout(_ layout: SwitcherLayout) {
+        guard layout != switcherLayout else { return }
+
+        switcherLayout = layout
+        UserDefaults.standard.set(layout.rawValue, forKey: Keys.switcherLayout)
     }
 
     func setSwitcherShortcut(_ shortcut: GlobalShortcut) {
@@ -120,6 +146,17 @@ final class PreferencesModel: ObservableObject {
             return fallback
         }
         return shortcut
+    }
+
+    private static func loadSwitcherLayout() -> SwitcherLayout {
+        guard
+            let rawValue = UserDefaults.standard.string(forKey: Keys.switcherLayout),
+            let layout = SwitcherLayout(rawValue: rawValue)
+        else {
+            return .classicList
+        }
+
+        return layout
     }
 
     private func refreshLaunchAtLoginStatus() {

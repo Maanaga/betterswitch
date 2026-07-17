@@ -13,7 +13,7 @@ enum WindowScanner {
                 appName(lhs).localizedCaseInsensitiveCompare(appName(rhs)) == .orderedAscending
             }
             .flatMap { app -> [WindowInfo] in
-                let windows = accessibilityWindows(for: app)
+                let windows = accessibilityWindows(for: app, visibleWindows: visibleWindowsByPID[app.processIdentifier] ?? [])
 
                 if windows.isEmpty {
                     return visibleWindowsByPID[app.processIdentifier] ?? []
@@ -32,7 +32,7 @@ enum WindowScanner {
         return rawWindows.compactMap(makeVisibleWindowInfo)
     }
 
-    private static func accessibilityWindows(for app: NSRunningApplication) -> [WindowInfo] {
+    private static func accessibilityWindows(for app: NSRunningApplication, visibleWindows: [WindowInfo]) -> [WindowInfo] {
         guard AXIsProcessTrusted() else {
             return []
         }
@@ -45,7 +45,7 @@ enum WindowScanner {
         }
 
         return axWindows.enumerated().compactMap { index, axWindow in
-            makeAccessibilityWindowInfo(from: axWindow, index: index, app: app)
+            makeAccessibilityWindowInfo(from: axWindow, index: index, app: app, visibleWindows: visibleWindows)
         }
     }
 
@@ -75,6 +75,7 @@ enum WindowScanner {
             windowTitle: title,
             bundleIdentifier: app?.bundleIdentifier,
             processIdentifier: processIdentifier,
+            windowNumber: windowNumber,
             bounds: bounds,
             ownerIcon: appIcon(for: app)
         )
@@ -83,7 +84,8 @@ enum WindowScanner {
     private static func makeAccessibilityWindowInfo(
         from axWindow: AXUIElement,
         index: Int,
-        app: NSRunningApplication
+        app: NSRunningApplication,
+        visibleWindows: [WindowInfo]
     ) -> WindowInfo? {
         let title = stringAttribute(kAXTitleAttribute, from: axWindow)
         let bounds = bounds(for: axWindow)
@@ -98,6 +100,7 @@ enum WindowScanner {
             windowTitle: title,
             bundleIdentifier: app.bundleIdentifier,
             processIdentifier: app.processIdentifier,
+            windowNumber: matchingVisibleWindow(title: title, bounds: bounds, in: visibleWindows)?.windowNumber,
             bounds: bounds,
             ownerIcon: appIcon(for: app)
         )
@@ -152,6 +155,23 @@ enum WindowScanner {
         }
 
         return CGRect(origin: origin, size: size)
+    }
+
+    private static func matchingVisibleWindow(title: String?, bounds: CGRect?, in visibleWindows: [WindowInfo]) -> WindowInfo? {
+        visibleWindows.first { visibleWindow in
+            if let title, !title.isEmpty, visibleWindow.windowTitle == title {
+                return true
+            }
+
+            guard let bounds, let visibleBounds = visibleWindow.bounds else {
+                return false
+            }
+
+            return abs(bounds.minX - visibleBounds.minX) < 8
+                && abs(bounds.minY - visibleBounds.minY) < 8
+                && abs(bounds.width - visibleBounds.width) < 8
+                && abs(bounds.height - visibleBounds.height) < 8
+        }
     }
 }
 
