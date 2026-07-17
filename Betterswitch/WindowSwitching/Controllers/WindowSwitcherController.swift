@@ -10,6 +10,7 @@ final class WindowSwitcherController: ObservableObject {
     @Published var selectedWindowID: String?
     @Published var accessibilityEnabled = AXIsProcessTrusted()
     @Published var previewThumbnails: [String: NSImage] = [:]
+    @Published private var previewThumbnailsByCacheKey: [String: NSImage] = [:]
     @Published var searchText = "" {
         didSet {
             selectedWindowID = filteredWindows.first?.id
@@ -127,7 +128,9 @@ final class WindowSwitcherController: ObservableObject {
             return
         }
 
-        let windowsNeedingPreviews = windows.filter { previewThumbnails[$0.id] == nil }
+        let windowsNeedingPreviews = windows.filter {
+            previewThumbnails[$0.id] == nil && previewThumbnailsByCacheKey[$0.previewCacheKey] == nil
+        }
         guard !windowsNeedingPreviews.isEmpty else {
             return
         }
@@ -151,10 +154,15 @@ final class WindowSwitcherController: ObservableObject {
 
                     if let thumbnail {
                         self.previewThumbnails[window.id] = thumbnail
+                        self.previewThumbnailsByCacheKey[window.previewCacheKey] = thumbnail
                     }
                 }
             }
         }
+    }
+
+    func previewThumbnail(for window: WindowInfo) -> NSImage? {
+        previewThumbnails[window.id] ?? previewThumbnailsByCacheKey[window.previewCacheKey]
     }
 
     private func makePanelIfNeeded() {
@@ -185,7 +193,9 @@ final class WindowSwitcherController: ObservableObject {
 
     private func prunePreviewCache() {
         let validIDs = Set(windows.map(\.id))
+        let validCacheKeys = Set(windows.map(\.previewCacheKey))
         previewThumbnails = previewThumbnails.filter { validIDs.contains($0.key) }
+        previewThumbnailsByCacheKey = previewThumbnailsByCacheKey.filter { validCacheKeys.contains($0.key) }
     }
 
     private func animateIn(_ panel: NSPanel) {

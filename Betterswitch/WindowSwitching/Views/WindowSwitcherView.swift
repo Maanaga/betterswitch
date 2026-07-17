@@ -107,7 +107,7 @@ struct WindowSwitcherView: View {
             } else {
                 PreviewWindowGrid(
                     windows: controller.filteredWindows,
-                    thumbnails: controller.previewThumbnails,
+                    thumbnail: controller.previewThumbnail,
                     selectedWindowID: controller.selectedWindowID,
                     onSelect: controller.select
                 )
@@ -270,7 +270,7 @@ private struct WindowRow: View {
 
 private struct PreviewWindowGrid: View {
     let windows: [WindowInfo]
-    let thumbnails: [String: NSImage]
+    let thumbnail: (WindowInfo) -> NSImage?
     let selectedWindowID: String?
     let onSelect: (WindowInfo) -> Void
 
@@ -305,7 +305,7 @@ private struct PreviewWindowGrid: View {
                 ForEach(windows) { window in
                     PreviewWindowCard(
                         window: window,
-                        thumbnail: thumbnails[window.id],
+                        thumbnail: thumbnail(window),
                         isSelected: selectedWindowID == window.id,
                         thumbnailWidth: thumbnailWidth,
                         thumbnailHeight: thumbnailHeight

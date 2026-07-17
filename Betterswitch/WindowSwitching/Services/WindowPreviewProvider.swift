@@ -7,12 +7,8 @@ final class WindowPreviewProvider {
     private let targetPixelSize = CGSize(width: 900, height: 560)
 
     func thumbnail(for window: WindowInfo) async -> NSImage? {
-        guard let windowNumber = window.windowNumber else {
-            return nil
-        }
-
         guard
-            let scWindow = await shareableWindow(matching: windowNumber),
+            let scWindow = await shareableWindow(matching: window),
             let cgImage = await captureImage(for: scWindow)
         else {
             return nil
@@ -21,13 +17,39 @@ final class WindowPreviewProvider {
         return resizedImage(from: cgImage)
     }
 
-    private func shareableWindow(matching windowNumber: Int) async -> SCWindow? {
+    private func shareableWindow(matching window: WindowInfo) async -> SCWindow? {
         do {
             let content = try await SCShareableContent.current
-            return content.windows.first { $0.windowID == CGWindowID(windowNumber) }
+            if let windowNumber = window.windowNumber,
+               let exactWindow = content.windows.first(where: { $0.windowID == CGWindowID(windowNumber) }) {
+                return exactWindow
+            }
+
+            let appWindows = content.windows.filter { scWindow in
+                scWindow.owningApplication?.processID == window.processIdentifier
+            }
+
+            if let title = window.windowTitle, !title.isEmpty,
+               let titleMatch = appWindows.first(where: { $0.title == title }) {
+                return titleMatch
+            }
+
+            if let bounds = window.bounds,
+               let boundsMatch = appWindows.first(where: { roughlyMatches($0.frame, bounds) }) {
+                return boundsMatch
+            }
+
+            return appWindows.first
         } catch {
             return nil
         }
+    }
+
+    private func roughlyMatches(_ lhs: CGRect, _ rhs: CGRect) -> Bool {
+        abs(lhs.minX - rhs.minX) < 12
+            && abs(lhs.minY - rhs.minY) < 12
+            && abs(lhs.width - rhs.width) < 16
+            && abs(lhs.height - rhs.height) < 16
     }
 
     private func captureImage(for window: SCWindow) async -> CGImage? {
