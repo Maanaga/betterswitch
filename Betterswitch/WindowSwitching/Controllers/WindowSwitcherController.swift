@@ -238,7 +238,14 @@ final class WindowSwitcherController: ObservableObject {
     private func center(panel: NSPanel) {
         let screen = NSScreen.main ?? NSScreen.screens.first
         let frame = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1440, height: 900)
-        let size = NSSize(width: min(700, frame.width - 80), height: min(560, frame.height - 80))
+        let size: NSSize
+        switch preferences.switcherLayout {
+        case .classicList:
+            size = NSSize(width: min(700, frame.width - 80), height: min(560, frame.height - 80))
+        case .previewThumbnails:
+            size = NSSize(width: min(1540, frame.width - 48), height: min(900, frame.height - 48))
+        }
+
         panel.setFrame(
             NSRect(
                 x: frame.midX - size.width / 2,

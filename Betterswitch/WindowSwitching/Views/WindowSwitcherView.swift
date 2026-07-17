@@ -82,47 +82,65 @@ struct WindowSwitcherView: View {
     }
 
     private var previewSwitcher: some View {
-        VStack(spacing: 12) {
-            Spacer(minLength: 0)
+        ZStack(alignment: .top) {
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(.ultraThinMaterial)
+                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .fill(Color.black.opacity(glassDarkness * 0.72))
+                }
+                .overlay {
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
+                }
 
-            previewSearchField
+            previewHiddenSearchField
+                .frame(width: 1, height: 1)
+                .opacity(0.01)
 
-            ScrollViewReader { proxy in
-                ScrollView(.horizontal) {
-                    LazyHStack(spacing: 18) {
-                        ForEach(controller.filteredWindows) { window in
-                            PreviewWindowCard(
-                                window: window,
-                                thumbnail: controller.previewThumbnails[window.id],
-                                isSelected: controller.selectedWindowID == window.id
-                            )
-                            .id(window.id)
-                            .onTapGesture {
-                                controller.select(window)
-                            }
-                        }
-                    }
-                    .padding(.horizontal, 30)
-                    .padding(.vertical, 30)
-                }
-                .scrollIndicators(.never)
-                .frame(height: 288)
-                .padding(.horizontal, 8)
-                .onAppear {
-                    scrollToSelection(with: proxy, animated: false)
-                    controller.loadPreviewThumbnailsIfNeeded()
-                }
-                .onChange(of: controller.selectedWindowID) {
-                    scrollToSelection(with: proxy, animated: true)
-                }
-                .onChange(of: preferences.switcherLayout) {
-                    controller.loadPreviewThumbnailsIfNeeded()
-                }
+            if controller.filteredWindows.isEmpty {
+                Text("No matching windows")
+                    .font(.system(size: 15, weight: .semibold))
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                PreviewWindowGrid(
+                    windows: controller.filteredWindows,
+                    thumbnails: controller.previewThumbnails,
+                    selectedWindowID: controller.selectedWindowID,
+                    onSelect: controller.select
+                )
+                .padding(26)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 
-            Spacer(minLength: 0)
+            if !controller.searchText.isEmpty {
+                HStack(spacing: 8) {
+                    Image(systemName: "magnifyingglass")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(controller.searchText)
+                        .font(.system(size: 13, weight: .semibold))
+                        .lineLimit(1)
+                }
+                .foregroundStyle(.primary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 7)
+                .background(.regularMaterial, in: Capsule())
+                .overlay {
+                    Capsule()
+                        .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
+                }
+                .padding(.top, 14)
+            }
         }
-        .frame(maxHeight: .infinity)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear {
+            controller.loadPreviewThumbnailsIfNeeded()
+        }
+        .onChange(of: preferences.switcherLayout) {
+            controller.loadPreviewThumbnailsIfNeeded()
+        }
     }
 
     private func scrollToSelection(with proxy: ScrollViewProxy, animated: Bool) {
@@ -193,27 +211,15 @@ struct WindowSwitcherView: View {
         .padding(.top, 8)
     }
 
-    private var previewSearchField: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "magnifyingglass")
-                .font(.system(size: 13, weight: .semibold))
-                .foregroundStyle(.secondary)
-
-            KeyboardRoutingSearchField(
-                text: $controller.searchText,
-                placeholder: "Search apps and windows",
-                onMoveSelection: controller.moveSelection,
-                onActivateSelection: controller.activateSelectedWindow,
-                onDismiss: controller.hide,
-                navigationAxis: .horizontal
-            )
-            .frame(height: 24)
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-        .frame(width: 360)
-        .liquidGlassFrame(cornerRadius: 22, isSelected: false, darkness: glassDarkness)
-        .padding(.top, 8)
+    private var previewHiddenSearchField: some View {
+        KeyboardRoutingSearchField(
+            text: $controller.searchText,
+            placeholder: "",
+            onMoveSelection: controller.moveSelection,
+            onActivateSelection: controller.activateSelectedWindow,
+            onDismiss: controller.hide,
+            navigationAxis: .horizontal
+        )
     }
 }
 
@@ -260,28 +266,92 @@ private struct WindowRow: View {
     }
 }
 
+private struct PreviewWindowGrid: View {
+    let windows: [WindowInfo]
+    let thumbnails: [String: NSImage]
+    let selectedWindowID: String?
+    let onSelect: (WindowInfo) -> Void
+
+    private let maxColumns = 6
+    private let preferredColumns = 4
+    private let horizontalSpacing: CGFloat = 30
+    private let verticalSpacing: CGFloat = 34
+    private let minimumCardWidth: CGFloat = 220
+
+    var body: some View {
+        GeometryReader { geometry in
+            let widthBasedColumns = max(1, Int((geometry.size.width + horizontalSpacing) / (minimumCardWidth + horizontalSpacing)))
+            let columnCount = min(max(windows.count, 1), maxColumns, min(preferredColumns, widthBasedColumns))
+            let rowCount = Int(ceil(Double(windows.count) / Double(columnCount)))
+            let availableWidth = max(geometry.size.width, 1)
+            let availableHeight = max(geometry.size.height, 1)
+            let cardWidth = (availableWidth - CGFloat(columnCount - 1) * horizontalSpacing) / CGFloat(columnCount)
+            let cardHeight = (availableHeight - CGFloat(max(rowCount - 1, 0)) * verticalSpacing) / CGFloat(max(rowCount, 1))
+            let thumbnailHeight = max(120, min(cardHeight - 44, cardWidth * 0.64))
+
+            LazyVGrid(
+                columns: Array(repeating: GridItem(.flexible(), spacing: horizontalSpacing), count: columnCount),
+                alignment: .center,
+                spacing: verticalSpacing
+            ) {
+                ForEach(windows) { window in
+                    PreviewWindowCard(
+                        window: window,
+                        thumbnail: thumbnails[window.id],
+                        isSelected: selectedWindowID == window.id,
+                        thumbnailHeight: thumbnailHeight
+                    )
+                    .frame(width: cardWidth, height: cardHeight)
+                    .onTapGesture {
+                        onSelect(window)
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+        }
+    }
+}
+
 private struct PreviewWindowCard: View {
     let window: WindowInfo
     let thumbnail: NSImage?
     let isSelected: Bool
+    let thumbnailHeight: CGFloat
 
     var body: some View {
-        preview
-            .frame(width: 314, height: 204)
-            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-            .overlay(alignment: .bottomLeading) {
-                if isSelected {
-                    focusedTitle
+        VStack(spacing: 8) {
+            preview
+                .frame(maxWidth: .infinity, minHeight: thumbnailHeight, maxHeight: thumbnailHeight)
+                .background(Color.black.opacity(0.16), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .overlay {
+                    RoundedRectangle(cornerRadius: 7, style: .continuous)
+                        .strokeBorder(
+                            isSelected ? Color.white.opacity(0.95) : Color.white.opacity(0.22),
+                            lineWidth: isSelected ? 2 : 1
+                        )
                 }
+                .shadow(color: .black.opacity(isSelected ? 0.26 : 0.12), radius: isSelected ? 12 : 7, y: 5)
+
+            HStack(spacing: 7) {
+                Image(nsImage: window.ownerIcon)
+                    .resizable()
+                    .aspectRatio(contentMode: .fit)
+                    .frame(width: 17, height: 17)
+
+                Text(focusedTitleText)
+                    .font(.system(size: isSelected ? 13 : 12, weight: isSelected ? .semibold : .medium))
+                    .foregroundStyle(Color.white.opacity(isSelected ? 0.98 : 0.82))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
             }
-            .overlay {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .strokeBorder(isSelected ? Color.black.opacity(0.78) : Color.white.opacity(0.62), lineWidth: isSelected ? 3 : 1)
-            }
-            .shadow(color: .black.opacity(isSelected ? 0.34 : 0.18), radius: isSelected ? 18 : 10, y: 8)
-            .scaleEffect(isSelected ? 1.05 : 1)
-            .animation(.snappy(duration: 0.16), value: isSelected)
-            .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .frame(maxWidth: .infinity)
+        }
+        .padding(.horizontal, 5)
+        .padding(.vertical, 3)
+        .background(isSelected ? Color.white.opacity(0.10) : Color.clear, in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .animation(.snappy(duration: 0.16), value: isSelected)
+        .contentShape(Rectangle())
     }
 
     @ViewBuilder
@@ -290,7 +360,6 @@ private struct PreviewWindowCard: View {
             Image(nsImage: thumbnail)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
-                .frame(width: 314, height: 204)
         } else {
             ZStack {
                 RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -302,41 +371,15 @@ private struct PreviewWindowCard: View {
                     .frame(width: 42, height: 42)
                     .opacity(0.72)
             }
-            .frame(width: 314, height: 204)
         }
-    }
-
-    private var focusedTitle: some View {
-        HStack(spacing: 8) {
-            Image(nsImage: window.ownerIcon)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 16, height: 16)
-
-            Text(focusedTitleText)
-                .font(.system(size: 12, weight: .semibold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.82)
-        }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .frame(maxWidth: 218, alignment: .leading)
-        .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .strokeBorder(.white.opacity(0.28), lineWidth: 1)
-        }
-        .padding(9)
-        .shadow(color: .black.opacity(0.28), radius: 8, y: 3)
     }
 
     private var focusedTitleText: String {
-        guard let title = window.windowTitle, !title.isEmpty else {
+        guard let title = window.windowTitle, !title.isEmpty, title != window.appName else {
             return window.appName
         }
 
-        return "\(window.appName) — \(title)"
+        return title
     }
 }
 
