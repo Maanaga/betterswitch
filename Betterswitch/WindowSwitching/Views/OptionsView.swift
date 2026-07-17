@@ -52,6 +52,17 @@ struct OptionsView: View {
             }
 
             Section("Appearance") {
+                Picker("Switcher layout", selection: Binding(
+                    get: { preferences.switcherLayout },
+                    set: preferences.setSwitcherLayout
+                )) {
+                    ForEach(SwitcherLayout.allCases) { layout in
+                        Text(layout.displayName)
+                            .tag(layout)
+                    }
+                }
+                .pickerStyle(.menu)
+
                 LabeledContent("Glass darkness") {
                     HStack(spacing: 10) {
                         Slider(value: $glassDarkness, in: 0...0.50)
@@ -61,6 +72,12 @@ struct OptionsView: View {
                             .foregroundStyle(.secondary)
                             .frame(width: 38, alignment: .trailing)
                     }
+                }
+
+                if preferences.switcherLayout == .previewThumbnails {
+                    Text("Window previews may require Screen Recording permission. If previews are unavailable, Betterswitch will continue showing app icons.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
 

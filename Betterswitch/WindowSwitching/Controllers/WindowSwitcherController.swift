@@ -9,17 +9,29 @@ final class WindowSwitcherController: ObservableObject {
     @Published var windows: [WindowInfo] = []
     @Published var selectedWindowID: String?
     @Published var accessibilityEnabled = AXIsProcessTrusted()
+    @Published var previewThumbnails: [String: NSImage] = [:]
     @Published var searchText = "" {
         didSet {
             selectedWindowID = filteredWindows.first?.id
         }
     }
 
+    let preferences: PreferencesModel
     private let recentSelectionKeysDefaultsKey = "recentSelectionKeys"
     private let maxRecentSelectionCount = 40
+    private let previewProvider = WindowPreviewProvider()
     private var panel: NSPanel?
     private var keyboardMonitor: Any?
+    private var previewLoadingTask: Task<Void, Never>?
     private var isAnimatingHide = false
+
+    init(preferences: PreferencesModel) {
+        self.preferences = preferences
+    }
+
+    deinit {
+        previewLoadingTask?.cancel()
+    }
 
     func toggle() {
         if panel?.isVisible == true {
@@ -64,7 +76,9 @@ final class WindowSwitcherController: ObservableObject {
 
     func refreshWindows() {
         windows = orderedWindows(WindowScanner.runningItems())
+        prunePreviewCache()
         selectedWindowID = filteredWindows.first?.id
+        loadPreviewThumbnailsIfNeeded()
     }
 
     func select(_ window: WindowInfo) {
@@ -102,6 +116,42 @@ final class WindowSwitcherController: ObservableObject {
         return windows.filter { $0.matchesSearch(query) }
     }
 
+    func loadPreviewThumbnailsIfNeeded() {
+        guard preferences.switcherLayout == .previewThumbnails else {
+            previewLoadingTask?.cancel()
+            return
+        }
+
+        let windowsNeedingPreviews = windows.filter { previewThumbnails[$0.id] == nil }
+        guard !windowsNeedingPreviews.isEmpty else {
+            return
+        }
+
+        previewLoadingTask?.cancel()
+        previewLoadingTask = Task { [weak self, previewProvider] in
+            for window in windowsNeedingPreviews {
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                let thumbnail = await previewProvider.thumbnail(for: window)
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                await MainActor.run { [weak self] in
+                    guard let self, self.windows.contains(where: { $0.id == window.id }) else {
+                        return
+                    }
+
+                    if let thumbnail {
+                        self.previewThumbnails[window.id] = thumbnail
+                    }
+                }
+            }
+        }
+    }
+
     private func makePanelIfNeeded() {
         guard panel == nil else {
             return
@@ -126,6 +176,11 @@ final class WindowSwitcherController: ObservableObject {
         panel.isOpaque = false
         panel.hasShadow = false
         self.panel = panel
+    }
+
+    private func prunePreviewCache() {
+        let validIDs = Set(windows.map(\.id))
+        previewThumbnails = previewThumbnails.filter { validIDs.contains($0.key) }
     }
 
     private func animateIn(_ panel: NSPanel) {
@@ -209,10 +264,28 @@ final class WindowSwitcherController: ObservableObject {
             case 36:
                 activateSelectedWindow()
                 return nil
+            case 123:
+                if preferences.switcherLayout == .previewThumbnails {
+                    moveSelection(-1)
+                    return nil
+                }
+                return event
+            case 124:
+                if preferences.switcherLayout == .previewThumbnails {
+                    moveSelection(1)
+                    return nil
+                }
+                return event
             case 125:
+                guard preferences.switcherLayout == .classicList else {
+                    return event
+                }
                 moveSelection(1)
                 return nil
             case 126:
+                guard preferences.switcherLayout == .classicList else {
+                    return event
+                }
                 moveSelection(-1)
                 return nil
             default:
