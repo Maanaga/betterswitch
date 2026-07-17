@@ -83,17 +83,8 @@ struct WindowSwitcherView: View {
 
     private var previewSwitcher: some View {
         ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .fill(.ultraThinMaterial)
-                .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .fill(Color.black.opacity(glassDarkness * 0.72))
-                }
-                .overlay {
-                    RoundedRectangle(cornerRadius: 22, style: .continuous)
-                        .strokeBorder(Color.white.opacity(0.18), lineWidth: 1)
-                }
+            Color.black.opacity(0.48)
+                .ignoresSafeArea()
 
             previewHiddenSearchField
                 .frame(width: 1, height: 1)
@@ -111,7 +102,8 @@ struct WindowSwitcherView: View {
                     selectedWindowID: controller.selectedWindowID,
                     onSelect: controller.select
                 )
-                .padding(26)
+                .padding(.horizontal, 80)
+                .padding(.vertical, 72)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
 

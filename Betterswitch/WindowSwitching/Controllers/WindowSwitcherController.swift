@@ -258,7 +258,7 @@ final class WindowSwitcherController: ObservableObject {
         case .classicList:
             size = NSSize(width: min(700, frame.width - 80), height: min(560, frame.height - 80))
         case .previewThumbnails:
-            size = NSSize(width: min(1540, frame.width - 48), height: min(900, frame.height - 48))
+            size = NSSize(width: frame.width, height: frame.height)
         }
 
         panel.setFrame(
