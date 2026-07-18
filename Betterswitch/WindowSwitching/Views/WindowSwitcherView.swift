@@ -100,6 +100,7 @@ struct WindowSwitcherView: View {
                     .font(.system(size: 15, weight: .semibold))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .opacity(controller.previewContentVisible ? 1 : 0)
             } else {
                 PreviewWindowGrid(
                     windows: controller.filteredWindows,
@@ -111,6 +112,8 @@ struct WindowSwitcherView: View {
                 .padding(.horizontal, 80)
                 .padding(.vertical, 72)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .scaleEffect(controller.previewContentVisible ? 1 : 0.96)
+                .opacity(controller.previewContentVisible ? 1 : 0)
             }
 
             if !controller.searchText.isEmpty {
@@ -130,6 +133,8 @@ struct WindowSwitcherView: View {
                         .strokeBorder(Color.white.opacity(0.22), lineWidth: 1)
                 }
                 .padding(.top, 14)
+                .scaleEffect(controller.previewContentVisible ? 1 : 0.96)
+                .opacity(controller.previewContentVisible ? 1 : 0)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
