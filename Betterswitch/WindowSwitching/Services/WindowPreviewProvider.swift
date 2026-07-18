@@ -4,7 +4,7 @@ import ScreenCaptureKit
 
 @MainActor
 final class WindowPreviewProvider {
-    private let targetPixelSize = CGSize(width: 900, height: 560)
+    private let targetPixelSize = CGSize(width: 1800, height: 1120)
 
     func thumbnail(for window: WindowInfo) async -> NSImage? {
         guard

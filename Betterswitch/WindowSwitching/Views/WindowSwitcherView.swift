@@ -28,7 +28,6 @@ struct WindowSwitcherView: View {
             }
         }
         .frame(minWidth: 520, minHeight: 360)
-        .searchable(text: $controller.searchText, prompt: "Search apps and windows")
     }
 
     private var classicSwitcher: some View {
@@ -151,6 +150,7 @@ struct WindowSwitcherView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .searchable(text: $controller.searchText, prompt: "Search apps and windows")
         .onAppear {
             controller.loadPreviewThumbnailsIfNeeded()
         }
