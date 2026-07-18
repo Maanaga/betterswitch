@@ -6,6 +6,7 @@ struct WindowSwitcherView: View {
     @ObservedObject private var preferences: PreferencesModel
     @AppStorage("glassDarkness") private var glassDarkness = 0.40
     @State private var isAtScrollEnd = false
+    @State private var shouldSkipNextClassicSelectionScroll = false
 
     init(controller: WindowSwitcherController) {
         _controller = ObservedObject(wrappedValue: controller)
@@ -45,6 +46,7 @@ struct WindowSwitcherView: View {
                             .id(window.id)
                             .onHover { isHovering in
                                 if isHovering {
+                                    shouldSkipNextClassicSelectionScroll = true
                                     controller.focus(window)
                                 }
                             }
@@ -80,7 +82,11 @@ struct WindowSwitcherView: View {
                     scrollToSelection(with: proxy, animated: false)
                 }
                 .onChange(of: controller.selectedWindowID) {
-                    scrollToSelection(with: proxy, animated: true)
+                    if shouldSkipNextClassicSelectionScroll {
+                        shouldSkipNextClassicSelectionScroll = false
+                    } else {
+                        scrollToSelection(with: proxy, animated: true)
+                    }
                 }
             }
         }
