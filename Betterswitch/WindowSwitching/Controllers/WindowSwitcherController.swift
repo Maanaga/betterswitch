@@ -10,6 +10,7 @@ final class WindowSwitcherController: ObservableObject {
     @Published var selectedWindowID: String?
     @Published var accessibilityEnabled = AXIsProcessTrusted()
     @Published var previewThumbnails: [String: NSImage] = [:]
+    @Published var previewContentVisible = false
     @Published private var previewThumbnailsByCacheKey: [String: NSImage] = [:]
     @Published var searchText = "" {
         didSet {
@@ -71,6 +72,7 @@ final class WindowSwitcherController: ObservableObject {
     func dismissImmediately() {
         removeKeyboardMonitor()
         guard let panel else { return }
+        previewContentVisible = false
         panel.orderOut(nil)
         panel.alphaValue = 1
         isAnimatingHide = false
@@ -203,6 +205,11 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     private func animateIn(_ panel: NSPanel) {
+        if preferences.switcherLayout == .previewThumbnails {
+            animatePreviewIn(panel)
+            return
+        }
+
         let finalFrame = panel.frame
         let startFrame = scaledFrame(from: finalFrame, scale: 0.94)
 
@@ -219,6 +226,11 @@ final class WindowSwitcherController: ObservableObject {
     }
 
     private func animateOut(_ panel: NSPanel) {
+        if preferences.switcherLayout == .previewThumbnails {
+            animatePreviewOut(panel)
+            return
+        }
+
         isAnimatingHide = true
         let startFrame = panel.frame
         let endFrame = scaledFrame(from: startFrame, scale: 0.96)
@@ -228,6 +240,48 @@ final class WindowSwitcherController: ObservableObject {
             context.timingFunction = CAMediaTimingFunction(name: .easeIn)
             panel.animator().alphaValue = 0
             panel.animator().setFrame(endFrame, display: true)
+        } completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else {
+                    return
+                }
+
+                self.panel?.orderOut(nil)
+                self.panel?.alphaValue = 1
+                self.panel?.setFrame(startFrame, display: false)
+                self.isAnimatingHide = false
+            }
+        }
+    }
+
+    private func animatePreviewIn(_ panel: NSPanel) {
+        previewContentVisible = false
+        panel.alphaValue = 0
+        panel.makeKeyAndOrderFront(nil)
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.16
+            context.timingFunction = CAMediaTimingFunction(name: .linear)
+            panel.animator().alphaValue = 1
+        }
+
+        withAnimation(.snappy(duration: 0.20)) {
+            previewContentVisible = true
+        }
+    }
+
+    private func animatePreviewOut(_ panel: NSPanel) {
+        isAnimatingHide = true
+        let startFrame = panel.frame
+
+        withAnimation(.snappy(duration: 0.14)) {
+            previewContentVisible = false
+        }
+
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.14
+            context.timingFunction = CAMediaTimingFunction(name: .linear)
+            panel.animator().alphaValue = 0
         } completionHandler: { [weak self] in
             MainActor.assumeIsolated {
                 guard let self else {
