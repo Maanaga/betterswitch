@@ -109,6 +109,7 @@ enum WindowScanner {
     private static func isSwitchableApp(_ app: NSRunningApplication) -> Bool {
         app.activationPolicy == .regular
             && app.processIdentifier != NSRunningApplication.current.processIdentifier
+            && app.bundleIdentifier != "com.apple.finder"
     }
 
     private static func appName(_ app: NSRunningApplication) -> String {

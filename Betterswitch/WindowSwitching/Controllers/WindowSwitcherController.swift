@@ -90,6 +90,10 @@ final class WindowSwitcherController: ObservableObject {
         hide()
     }
 
+    func focus(_ window: WindowInfo) {
+        selectedWindowID = window.id
+    }
+
     func moveSelection(_ direction: Int) {
         let visibleWindows = filteredWindows
         guard !visibleWindows.isEmpty else {

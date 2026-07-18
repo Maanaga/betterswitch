@@ -43,6 +43,11 @@ struct WindowSwitcherView: View {
                                 glassDarkness: glassDarkness
                             )
                             .id(window.id)
+                            .onHover { isHovering in
+                                if isHovering {
+                                    controller.focus(window)
+                                }
+                            }
                             .onTapGesture {
                                 controller.select(window)
                             }
@@ -100,6 +105,7 @@ struct WindowSwitcherView: View {
                     windows: controller.filteredWindows,
                     thumbnail: controller.previewThumbnail,
                     selectedWindowID: controller.selectedWindowID,
+                    onFocus: controller.focus,
                     onSelect: controller.select
                 )
                 .padding(.horizontal, 80)
@@ -264,6 +270,7 @@ private struct PreviewWindowGrid: View {
     let windows: [WindowInfo]
     let thumbnail: (WindowInfo) -> NSImage?
     let selectedWindowID: String?
+    let onFocus: (WindowInfo) -> Void
     let onSelect: (WindowInfo) -> Void
 
     private let maxColumns = 6
@@ -303,6 +310,11 @@ private struct PreviewWindowGrid: View {
                         thumbnailHeight: thumbnailHeight
                     )
                     .frame(width: cardWidth, height: cardHeight)
+                    .onHover { isHovering in
+                        if isHovering {
+                            onFocus(window)
+                        }
+                    }
                     .onTapGesture {
                         onSelect(window)
                     }
