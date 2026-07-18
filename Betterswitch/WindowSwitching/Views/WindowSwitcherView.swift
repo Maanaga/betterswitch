@@ -36,13 +36,16 @@ struct WindowSwitcherView: View {
 
             ScrollViewReader { proxy in
                 ScrollView {
-                    LazyVStack(spacing: 12) {
+                    LazyVStack(spacing: 0) {
                         ForEach(controller.filteredWindows) { window in
                             WindowRow(
                                 window: window,
                                 isSelected: controller.selectedWindowID == window.id,
                                 glassDarkness: glassDarkness
                             )
+                            .padding(.vertical, 6)
+                            .background(Color.black.opacity(0.001))
+                            .contentShape(Rectangle())
                             .id(window.id)
                             .onHover { isHovering in
                                 if isHovering {
@@ -56,7 +59,9 @@ struct WindowSwitcherView: View {
                         }
                     }
                     .padding(8)
+                    .background(Color.black.opacity(0.001))
                 }
+                .background(Color.black.opacity(0.001))
                 .scrollIndicators(.never)
                 .mask {
                     if isAtScrollEnd {
