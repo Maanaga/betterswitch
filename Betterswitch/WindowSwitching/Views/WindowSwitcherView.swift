@@ -44,7 +44,6 @@ struct WindowSwitcherView: View {
                                 glassDarkness: glassDarkness
                             )
                             .padding(.vertical, 6)
-                            .background(Color.black.opacity(0.001))
                             .contentShape(Rectangle())
                             .id(window.id)
                             .onHover { isHovering in
@@ -59,9 +58,7 @@ struct WindowSwitcherView: View {
                         }
                     }
                     .padding(8)
-                    .background(Color.black.opacity(0.001))
                 }
-                .background(Color.black.opacity(0.001))
                 .scrollIndicators(.never)
                 .mask {
                     if isAtScrollEnd {
@@ -545,19 +542,34 @@ private extension View {
 }
 
 private struct LiquidGlassFrame: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+
     let cornerRadius: CGFloat
     let isSelected: Bool
     let darkness: Double
 
     private var isDarkened: Bool { darkness > 0.001 }
     private var tintOpacity: Double { darkness * 0.75 }
+    private var usesLightGlass: Bool { colorScheme == .light && isDarkened }
+    private var fillColor: Color {
+        usesLightGlass ? Color.white.opacity(0.42 + darkness * 0.28) : Color.black.opacity(darkness)
+    }
+    private var unselectedTintColor: Color {
+        usesLightGlass ? Color.white.opacity(0.30 + darkness * 0.32) : Color.black.opacity(tintOpacity)
+    }
+    private var fallbackOverlayColor: Color {
+        usesLightGlass ? Color.white.opacity(0.34 + darkness * 0.28) : Color.black.opacity(darkness)
+    }
+    private var borderColor: Color {
+        isSelected ? Color.accentColor.opacity(0.9) : Color.white.opacity(usesLightGlass ? 0.32 : 0.14)
+    }
 
     func body(content: Content) -> some View {
         if #available(macOS 26.0, *) {
             content
                 .background {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .fill(isDarkened ? Color.black.opacity(darkness) : Color.clear)
+                        .fill(isDarkened ? fillColor : Color.clear)
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
                                 .fill(isSelected ? Color.accentColor.opacity(0.34) : Color.clear)
@@ -568,14 +580,14 @@ private struct LiquidGlassFrame: ViewModifier {
                         .tint(
                             isSelected
                                 ? Color.accentColor.opacity(0.38)
-                                : (isDarkened ? Color.black.opacity(tintOpacity) : Color.white.opacity(0.08))
+                                : (isDarkened ? unselectedTintColor : Color.white.opacity(0.08))
                         )
                         .interactive(isSelected),
                     in: .rect(cornerRadius: cornerRadius)
                 )
                 .overlay {
                     RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                        .strokeBorder(isSelected ? Color.accentColor.opacity(0.9) : Color.white.opacity(0.14), lineWidth: 1)
+                        .strokeBorder(borderColor, lineWidth: 1)
                 }
         } else {
             content
@@ -584,7 +596,7 @@ private struct LiquidGlassFrame: ViewModifier {
                         .fill(.ultraThinMaterial)
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                .fill(isDarkened ? Color.black.opacity(darkness) : Color.white.opacity(0.08))
+                                .fill(isDarkened ? fallbackOverlayColor : Color.white.opacity(0.08))
                         }
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
@@ -592,7 +604,7 @@ private struct LiquidGlassFrame: ViewModifier {
                         }
                         .overlay {
                             RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
-                                .strokeBorder(isSelected ? Color.accentColor.opacity(0.9) : Color.white.opacity(0.12), lineWidth: 1)
+                                .strokeBorder(borderColor, lineWidth: 1)
                         }
                 }
         }

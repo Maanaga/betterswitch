@@ -179,6 +179,7 @@ final class WindowSwitcherController: ObservableObject {
         let view = WindowSwitcherView(controller: self)
         let hostingView = NSHostingView(rootView: view)
         hostingView.wantsLayer = true
+        hostingView.layer?.isOpaque = false
         hostingView.layer?.backgroundColor = NSColor.clear.cgColor
         let panel = SwitcherPanel(
             contentRect: NSRect(x: 0, y: 0, width: 700, height: 560),
@@ -187,6 +188,9 @@ final class WindowSwitcherController: ObservableObject {
             defer: false
         )
         panel.contentView = hostingView
+        panel.contentView?.wantsLayer = true
+        panel.contentView?.layer?.isOpaque = false
+        panel.contentView?.layer?.backgroundColor = NSColor.clear.cgColor
         panel.isFloatingPanel = true
         panel.level = .modalPanel
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
