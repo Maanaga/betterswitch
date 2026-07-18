@@ -7,6 +7,7 @@ struct WindowSwitcherView: View {
     @AppStorage("glassDarkness") private var glassDarkness = 0.40
     @State private var isAtScrollEnd = false
     @State private var shouldSkipNextClassicSelectionScroll = false
+    @State private var suppressClassicHoverFocusUntil = Date.distantPast
 
     init(controller: WindowSwitcherController) {
         _controller = ObservedObject(wrappedValue: controller)
@@ -48,7 +49,7 @@ struct WindowSwitcherView: View {
                             .contentShape(Rectangle())
                             .id(window.id)
                             .onHover { isHovering in
-                                if isHovering {
+                                if isHovering && Date() >= suppressClassicHoverFocusUntil {
                                     shouldSkipNextClassicSelectionScroll = true
                                     controller.focus(window)
                                 }
@@ -90,6 +91,7 @@ struct WindowSwitcherView: View {
                     if shouldSkipNextClassicSelectionScroll {
                         shouldSkipNextClassicSelectionScroll = false
                     } else {
+                        suppressClassicHoverFocusUntil = Date().addingTimeInterval(0.28)
                         scrollToSelection(with: proxy, animated: true)
                     }
                 }
