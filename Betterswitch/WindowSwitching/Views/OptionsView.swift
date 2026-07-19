@@ -52,6 +52,23 @@ struct OptionsView: View {
             }
 
             Section("Appearance") {
+                LabeledContent("App icon") {
+                    HStack(spacing: 14) {
+                        ForEach(AppIconStyle.allCases) { style in
+                            Button {
+                                preferences.setAppIconStyle(style)
+                            } label: {
+                                AppIconChoiceView(
+                                    image: iconImage(for: style),
+                                    isSelected: preferences.appIconStyle == style
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(style.displayName)
+                        }
+                    }
+                }
+
                 Picker("Switcher layout", selection: Binding(
                     get: { preferences.switcherLayout },
                     set: preferences.setSwitcherLayout
@@ -162,5 +179,32 @@ struct OptionsView: View {
 
         guard let build, build != version else { return version }
         return "\(version) (\(build))"
+    }
+
+    private func iconImage(for style: AppIconStyle) -> NSImage {
+        if let image = NSImage(named: style.assetName) {
+            return image
+        }
+
+        return NSApp.applicationIconImage
+    }
+}
+
+private struct AppIconChoiceView: View {
+    let image: NSImage
+    let isSelected: Bool
+
+    var body: some View {
+        Image(nsImage: image)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 32, height: 32)
+            .padding(6)
+            .overlay {
+                if isSelected {
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
+                        .strokeBorder(Color.primary, lineWidth: 1)
+                }
+            }
     }
 }

@@ -32,11 +32,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         preferences.menuBarVisibilityChanged = { [weak self] shouldShow in
             self?.updateMenuBarVisibility(shouldShow)
         }
+        preferences.appIconStyleChanged = { [weak self] style in
+            self?.applyAppIconStyle(style)
+        }
         preferences.shortcutsChanged = { [weak self] in
             self?.refreshHotKeys()
         }
         optionsWindowController = OptionsWindowController(preferences: preferences)
 
+        applyAppIconStyle(preferences.appIconStyle)
         updateMenuBarVisibility(preferences.showMenuBarIcon)
     }
 
@@ -83,6 +87,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 self.statusItem = nil
             }
             NSApp.setActivationPolicy(.regular)
+        }
+    }
+
+    private func applyAppIconStyle(_ style: AppIconStyle) {
+        if let image = NSImage(named: style.assetName) {
+            NSApp.applicationIconImage = image
+        } else {
+            NSApp.applicationIconImage = nil
         }
     }
 

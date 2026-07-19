@@ -18,11 +18,37 @@ enum SwitcherLayout: String, CaseIterable, Codable, Identifiable {
     }
 }
 
+enum AppIconStyle: String, CaseIterable, Codable, Identifiable {
+    case standard
+    case darkGlass
+
+    var id: Self { self }
+
+    var displayName: String {
+        switch self {
+        case .standard:
+            return "iconlight"
+        case .darkGlass:
+            return "icondark"
+        }
+    }
+
+    var assetName: String {
+        switch self {
+        case .standard:
+            return "iconlight"
+        case .darkGlass:
+            return "icondark"
+        }
+    }
+}
+
 @MainActor
 final class PreferencesModel: ObservableObject {
     private enum Keys {
         static let showMenuBarIcon = "showMenuBarIcon"
         static let switcherLayout = "switcherLayout"
+        static let appIconStyle = "appIconStyle"
         static let switcherShortcut = "switcherShortcut"
         static let alternateSwitcherShortcut = "alternateSwitcherShortcut"
         static let optionsShortcut = "optionsShortcut"
@@ -31,6 +57,7 @@ final class PreferencesModel: ObservableObject {
     @Published private(set) var launchAtLoginEnabled = false
     @Published private(set) var showMenuBarIcon: Bool
     @Published private(set) var switcherLayout: SwitcherLayout
+    @Published private(set) var appIconStyle: AppIconStyle
     @Published private(set) var switcherShortcut: GlobalShortcut
     @Published private(set) var alternateSwitcherShortcut: GlobalShortcut
     @Published private(set) var optionsShortcut: GlobalShortcut
@@ -38,6 +65,7 @@ final class PreferencesModel: ObservableObject {
     @Published private(set) var shortcutErrorMessage: String?
 
     var menuBarVisibilityChanged: ((Bool) -> Void)?
+    var appIconStyleChanged: ((AppIconStyle) -> Void)?
     var shortcutsChanged: (() -> String?)?
 
     init() {
@@ -45,6 +73,7 @@ final class PreferencesModel: ObservableObject {
         defaults.register(defaults: [Keys.showMenuBarIcon: true])
         showMenuBarIcon = defaults.bool(forKey: Keys.showMenuBarIcon)
         switcherLayout = Self.loadSwitcherLayout()
+        appIconStyle = Self.loadAppIconStyle()
         switcherShortcut = Self.loadShortcut(forKey: Keys.switcherShortcut, fallback: .showSwitcher)
         alternateSwitcherShortcut = Self.loadShortcut(
             forKey: Keys.alternateSwitcherShortcut,
@@ -83,6 +112,14 @@ final class PreferencesModel: ObservableObject {
 
         switcherLayout = layout
         UserDefaults.standard.set(layout.rawValue, forKey: Keys.switcherLayout)
+    }
+
+    func setAppIconStyle(_ style: AppIconStyle) {
+        guard style != appIconStyle else { return }
+
+        appIconStyle = style
+        UserDefaults.standard.set(style.rawValue, forKey: Keys.appIconStyle)
+        appIconStyleChanged?(style)
     }
 
     func setSwitcherShortcut(_ shortcut: GlobalShortcut) {
@@ -157,6 +194,17 @@ final class PreferencesModel: ObservableObject {
         }
 
         return layout
+    }
+
+    private static func loadAppIconStyle() -> AppIconStyle {
+        guard
+            let rawValue = UserDefaults.standard.string(forKey: Keys.appIconStyle),
+            let style = AppIconStyle(rawValue: rawValue)
+        else {
+            return .standard
+        }
+
+        return style
     }
 
     private func refreshLaunchAtLoginStatus() {

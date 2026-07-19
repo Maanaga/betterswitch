@@ -5,7 +5,7 @@ struct WindowSwitcherView: View {
     @ObservedObject var controller: WindowSwitcherController
     @ObservedObject private var preferences: PreferencesModel
     @AppStorage("glassDarkness") private var glassDarkness = 0.40
-    @State private var isAtScrollEnd = false
+    @State private var classicScrollEdges = ClassicScrollEdgeState(isAtTop: true, isAtBottom: true)
     @State private var shouldSkipNextClassicSelectionScroll = false
     @State private var suppressClassicHoverFocusUntil = Date.distantPast
 
@@ -61,24 +61,15 @@ struct WindowSwitcherView: View {
                 }
                 .scrollIndicators(.never)
                 .mask {
-                    if isAtScrollEnd {
-                        Color.black
-                    } else {
-                        LinearGradient(
-                            stops: [
-                                .init(color: .black, location: 0),
-                                .init(color: .black, location: 0.90),
-                                .init(color: .clear, location: 1)
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                    }
+                    classicScrollMask
                 }
-                .onScrollGeometryChange(for: Bool.self) { geometry in
-                    geometry.visibleRect.maxY >= geometry.contentSize.height - 1
-                } action: { _, isAtScrollEnd in
-                    self.isAtScrollEnd = isAtScrollEnd
+                .onScrollGeometryChange(for: ClassicScrollEdgeState.self) { geometry in
+                    ClassicScrollEdgeState(
+                        isAtTop: geometry.visibleRect.minY <= 1,
+                        isAtBottom: geometry.visibleRect.maxY >= geometry.contentSize.height - 1
+                    )
+                } action: { _, edges in
+                    classicScrollEdges = edges
                 }
                 .onAppear {
                     scrollToSelection(with: proxy, animated: false)
@@ -93,6 +84,19 @@ struct WindowSwitcherView: View {
                 }
             }
         }
+    }
+
+    private var classicScrollMask: some View {
+        LinearGradient(
+            stops: [
+                .init(color: classicScrollEdges.isAtTop ? .black : .clear, location: 0),
+                .init(color: .black, location: 0.08),
+                .init(color: .black, location: 0.90),
+                .init(color: classicScrollEdges.isAtBottom ? .black : .clear, location: 1)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
     }
 
     private var previewSwitcher: some View {
@@ -533,6 +537,11 @@ private struct KeyboardRoutingSearchField: NSViewRepresentable {
 private enum KeyboardNavigationAxis {
     case vertical
     case horizontal
+}
+
+private struct ClassicScrollEdgeState: Equatable {
+    let isAtTop: Bool
+    let isAtBottom: Bool
 }
 
 private extension View {
