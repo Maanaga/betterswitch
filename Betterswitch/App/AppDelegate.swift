@@ -40,8 +40,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         optionsWindowController = OptionsWindowController(preferences: preferences)
 
-        applyAppIconStyle(preferences.appIconStyle)
         updateMenuBarVisibility(preferences.showMenuBarIcon)
+        applyAppIconStyle(preferences.appIconStyle)
     }
 
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -88,14 +88,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             }
             NSApp.setActivationPolicy(.regular)
         }
+
+        if let preferences {
+            applyAppIconStyle(preferences.appIconStyle)
+        }
     }
 
     private func applyAppIconStyle(_ style: AppIconStyle) {
-        if let image = NSImage(named: style.assetName) {
+        let bundlePath = Bundle.main.bundlePath
+        if style == .standard {
+            NSApp.applicationIconImage = nil
+            NSWorkspace.shared.setIcon(nil, forFile: bundlePath, options: [])
+        } else if let image = NSImage(named: style.runtimeImageName) {
             NSApp.applicationIconImage = image
+            NSWorkspace.shared.setIcon(image, forFile: bundlePath, options: [])
         } else {
             NSApp.applicationIconImage = nil
         }
+        NSWorkspace.shared.noteFileSystemChanged(bundlePath)
+        NSApp.dockTile.display()
     }
 
     private func refreshHotKeys() -> String? {

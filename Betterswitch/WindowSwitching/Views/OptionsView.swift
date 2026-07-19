@@ -182,7 +182,7 @@ struct OptionsView: View {
     }
 
     private func iconImage(for style: AppIconStyle) -> NSImage {
-        if let image = NSImage(named: style.assetName) {
+        if let image = NSImage(named: style.previewAssetName) {
             return image
         }
 
