@@ -27,36 +27,36 @@ enum AppIconStyle: String, CaseIterable, Codable, Identifiable {
     var displayName: String {
         switch self {
         case .standard:
-            return "AppIcon"
+            return "BetterswitchIcon"
         case .darkGlass:
-            return "AppIconDark"
+            return "BetterswitchIconDark"
         }
     }
 
     var assetName: String {
         switch self {
         case .standard:
-            return "AppIcon"
+            return "BetterswitchIcon"
         case .darkGlass:
-            return "AppIconDark"
+            return "BetterswitchIconDark"
         }
     }
 
     var runtimeImageName: String {
         switch self {
         case .standard:
-            return "AppIcon"
+            return "BetterswitchIcon"
         case .darkGlass:
-            return "AppIconDarkRuntime"
+            return "BetterswitchIconDark"
         }
     }
 
     var previewAssetName: String {
         switch self {
         case .standard:
-            return "iconlight"
+            return "BetterswitchIcon"
         case .darkGlass:
-            return "icondark"
+            return "BetterswitchIconDark"
         }
     }
 }
