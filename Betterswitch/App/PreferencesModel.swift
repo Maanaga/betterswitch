@@ -88,7 +88,10 @@ final class PreferencesModel: ObservableObject {
 
     init() {
         let defaults = UserDefaults.standard
-        defaults.register(defaults: [Keys.showMenuBarIcon: true])
+        defaults.register(defaults: [
+            Keys.showMenuBarIcon: true,
+            Keys.switcherLayout: SwitcherLayout.classicList.rawValue
+        ])
         showMenuBarIcon = defaults.bool(forKey: Keys.showMenuBarIcon)
         switcherLayout = Self.loadSwitcherLayout()
         appIconStyle = Self.loadAppIconStyle()
