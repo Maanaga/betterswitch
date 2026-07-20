@@ -96,7 +96,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func applyAppIconStyle(_ style: AppIconStyle) {
         let bundlePath = Bundle.main.bundlePath
-        if let image = NSImage(named: style.runtimeImageName) {
+        if style == .standard {
+            NSApp.applicationIconImage = nil
+            NSWorkspace.shared.setIcon(nil, forFile: bundlePath, options: [])
+        } else if let image = NSImage(named: style.runtimeImageName) {
             NSApp.applicationIconImage = image
             NSWorkspace.shared.setIcon(image, forFile: bundlePath, options: [])
         } else {
