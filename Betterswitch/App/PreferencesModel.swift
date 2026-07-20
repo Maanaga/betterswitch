@@ -54,9 +54,9 @@ enum AppIconStyle: String, CaseIterable, Codable, Identifiable {
     var previewAssetName: String {
         switch self {
         case .standard:
-            return "BetterswitchIcon"
+            return "iconlight"
         case .darkGlass:
-            return "BetterswitchIconDark"
+            return "icondark"
         }
     }
 }
